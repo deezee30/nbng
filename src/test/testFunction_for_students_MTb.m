@@ -4,21 +4,19 @@
 % the relevant modelParameters, and then calls the function
 % "positionEstimator" to decode the trajectory. 
 
-function RMSE = testFunction_for_students_MTb(teamName)
-
-load("../../data/monkeydata_training.mat")
+function RMSE = testFunction_for_students_MTb(training_data, teamName)
 
 % Set random number generator
 rng(2013);
-ix = randperm(length(trial));
+ix = randperm(length(training_data));
 
 addpath(teamName);
 
 % Select training and testing data (you can choose to split your data in a different way if you wish)
-trainingData = trial(ix(1:50),:);
-testData = trial(ix(51:end),:);
+trainingData = training_data(ix(1:80),:);
+testData = training_data(ix(81:end),:);
 
-fprintf('Testing the continuous position estimator...')
+fprintf('Testing the continuous position estimator... ')
 
 meanSqError = 0;
 n_predictions = 0;  
