@@ -45,5 +45,14 @@ function [x, y] = positionEstimator(test_data, modelParameters)
   
   % - [x, y]:
   %     current position of the hand
+  
+    beta = modelParameters.beta; % 8 x 2
+    final_input = test_data.spikes(:, end);
+    
+    % TODO: convert the final_input into whatever type goes into linreg
+    %       and give us the final_firing_rate
+    final_firing_rate = ; % no idea what goes in here rn
+    [x,y] = final_firing_rate * beta;
+    
    
 end
