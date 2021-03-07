@@ -145,4 +145,50 @@ function [modelParameters] = positionEstimatorTraining(training_data)
     end
     
     whos
+    
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %       Start of Neural Network Code        %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    
+%     % Define shape of network (basic MLP but require linear activation on
+%     % final layer due to coordinate data)
+%     
+%     network_input_data = [];
+%     network_output_data = [];
+%     for k = 1:n_trjs
+%         pos = [avg_trjs(k).handPos(1, :); avg_trjs(k).handPos(2, :)]';
+%         firing_rate = [squeeze(avg_spike_rate(k, 1, :))];
+% 
+%         network_input_data = [network_input_data; firing_rate];
+%         network_output_data = [network_output_data; pos];
+%     end
+%     
+%     layers = [ ...
+%         featureInputLayer(98)
+%         fullyConnectedLayer(500)
+%         tanhLayer
+%         fullyConnectedLayer(50)
+%         fullyConenctedLayer(2)
+%         regressionLayer
+%         ];
+%     
+%     % Parameters for training
+%     options = trainingOptions('sgdm', 'MaxEpochs', 10, 'InitialLearnRate', 0.001, 'Plots', 'training-progress');
+%     
+%     % Train the network
+%     net = trainNetwork(network_input_data, network_output_data, layers, options);
+%     
+%     % Get predictions
+%     coord_prediciton = predict(net, input_data);
+%     
+%     % Plot predictions
+%     figure
+%     x_pos = coord_prediction(:,1);
+%     y_pos = coord_prediction(:,2);
+%     plot(x_pos, y_pos, 'r')
+    
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %       End of Neural Network Code        %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 end
