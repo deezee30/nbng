@@ -19,6 +19,8 @@ function [model_params] = positionEstimatorTraining(training_data)
     spike_dist_window = 80; % Window of spike density mixture model
     spike_dist_std    = 50; % Standard deviation of spike density mixture model
     k_num_neighbours  = 5;  % Number of k-nearest neighbours used for KNN classification
+    spike_bin_size    = 10; % Bin size of spike time spans
+    n_bins            = 25; % Number of spike bins of a neuron
     
     n_trials = size(training_data, 1);              % Number of recorded trials
     n_trjs   = size(training_data, 2);              % Number of recorded trajectories
@@ -30,7 +32,7 @@ function [model_params] = positionEstimatorTraining(training_data)
     % find the length of the longest trial
     L = 0;
     fprintf("\nFinding the length of longest trial... ");
-    t0 = tic; % Begin ticker
+    t_start = tic; % Begin ticker
     for k = 1:n_trjs
         for n = 1:n_trials    
             l = length(training_data(n,k).spikes(1,:));
@@ -39,11 +41,11 @@ function [model_params] = positionEstimatorTraining(training_data)
             end
         end
     end
-    fprintf("Done (%.2f s).\n", toc(t0));
+    fprintf("Done (%.2f s).\n", toc(t_start));
     
     % make all trajectories the same length
     fprintf("Making all trajectories the same length (%d pts)... ", L);
-    t0 = tic; % Begin ticker
+    t_start = tic; % Begin ticker
     for k = 1:n_trjs
         for n = 1:n_trials
             for j = length(training_data(n, k).spikes(1, :)) + 1:L % adjust to max length range
@@ -54,12 +56,14 @@ function [model_params] = positionEstimatorTraining(training_data)
             end
         end
     end
-    fprintf("Done (%.2f s).\n", toc(t0));
+    fprintf("Done (%.2f s).\n", toc(t_start));
+    
+    edges = fix(linspace(1, L, n_bins));
     
     % calculate the average trajectory
     avg_trjs(n_trjs).handPos = [];
     fprintf("Calculating average trajectories... ");
-    t0 = tic; % Begin ticker
+    t_start = tic; % Begin ticker
     for k = 1:n_trjs
         trj = zeros(2, L);
         for n = 1:n_trials
@@ -68,29 +72,40 @@ function [model_params] = positionEstimatorTraining(training_data)
             end
         end
         
-        avg_trjs(k).handPos = trj(:, :) / n_trials;
+        avg_trjs(k).handPos = disc_bin(trj(:, :) / n_trials, edges);
     end
-    fprintf("Done (%.2f s).\n", toc(t0));
+    fprintf("Done (%.2f s).\n", toc(t_start));
 
     % plot average trajectory
     %plot_avg_trajectories(avg_trjs)
-    
+                
+    % Binning spikes into n_bins bins to save processing time
+    fprintf("Coverting from %d bins to %d bins... ", L, n_bins);
+    t_start = tic; % Begin ticker
+    for n = 1:n_trials
+        for k = 1:n_trjs
+            training_data(n, k).discSpikes = disc_bin(training_data(n, k).spikes(:, :), edges);
+        end
+    end
+    fprintf("Done (%.2f s).\n", toc(t_start));
+        
     % Collect spike rate (density) function for each trial
     fprintf("Collecting spike density function for each trial... ");
-    t0 = tic; % Begin ticker
+    t_start = tic; % Begin ticker
     x = -spike_dist_window:1:spike_dist_window;
     y = normpdf(x, 0, spike_dist_std);
     for n = 1:n_trials
         for k = 1:n_trjs
-            training_data(n, k).spikeDist = zeros(n_neuron, L);
+            training_data(n, k).spikeDist = zeros(n_neuron, n_bins);
             for i = 1:n_neuron
-                % Mixture model of spike distribution resembling localised (time-dependent) spike rate, binned at dt = 1 ms
-                for l = 1:L
-                    if training_data(n, k).spikes(i, l) == 1
+                % Mixture model of spike distribution resembling localised (time-dependent)
+                % spike rate, binned at (L/n_bins) widths.
+                for bin = 1:n_bins
+                    if training_data(n, k).discSpikes(i, bin) > 0
                         for j = -spike_dist_window:spike_dist_window
-                            if j+l > 0 && j+l < L
-                                training_data(n, k).spikeDist(i, l+j) = training_data(n, k).spikes(i, l+j) ...
-                                                                      + y(j+spike_dist_window+1);
+                            if j+bin > 0 && j+bin < n_bins
+                                training_data(n, k).spikeDist(i, bin+j) = training_data(n, k).discSpikes(i, bin+j) ...
+                                                                        + y(j+spike_dist_window+1);
                             end
                         end
                     end
@@ -98,28 +113,34 @@ function [model_params] = positionEstimatorTraining(training_data)
             end
         end
     end
-    fprintf("Done (%.2f s).\n", toc(t0));
+    fprintf("Done (%.2f s).\n", toc(t_start));
+    
+    figure
+    plot(edges, training_data(1, 1).spikeDist(1, :))
     
     % Average spike rate (density) across all trials for each neuron
-    avg_spike_rate = zeros(n_trjs, n_neuron, L);
+    avg_spike_rate = zeros(n_trjs, n_neuron, n_bins);
     fprintf("Calculating average spike rate across all trials for each neuron... ");
-    t0 = tic; % Begin ticker
+    t_start = tic; % Begin ticker
     for k = 1:n_trjs
         for i = 1:n_neuron
-            for t = 1:L
+            for bin = 1:n_bins
                 spike_sum = 0;
                 for n = 1:n_trials
-                    spike_sum = spike_sum + training_data(n, k).spikeDist(i, t);
+                    spike_sum = spike_sum + training_data(n, k).spikeDist(i, bin);
                 end
-                avg_spike_rate(k, i, t) = spike_sum / n_trials;
+                avg_spike_rate(k, i, bin) = spike_sum / n_trials;
             end
         end
     end
-    fprintf("Done (%.2f s).\n", toc(t0));
+    fprintf("Done (%.2f s).\n", toc(t_start));
+    
+    figure
+    plot(edges, squeeze(avg_spike_rate(1, 1, :)))
     
     % Linear regression between spike densities and average trajectories
     fprintf("Begin calculation of linear regression weights... ");
-    t0 = tic; % Begin ticker
+    t_start = tic; % Begin ticker
     beta = []; % 8 x 2
     pos_preds = []; % 7800 x 2
     for k = 1:n_trjs
@@ -132,21 +153,22 @@ function [model_params] = positionEstimatorTraining(training_data)
                         
         % Append
         beta = [beta; beta_now]; % 8 x 2
-                
+        
         pos_pred = firing_rate' * beta_now; % 975 x 2
         pos_preds = [pos_preds; pos_pred]; % 7800 x 2
         
     end
-    fprintf("Done (%.2f s).\n", toc(t0));
+    fprintf("Done (%.2f s).\n", toc(t_start));
         
     model_params.beta = beta;
     
     % Plot prediction
+    figure
     for k = 1:n_trjs
         
-        end_point = k * L;
+        end_point = k * n_bins;
         
-        start_point = (k-1) * L + 1;
+        start_point = (k-1) * n_bins + 1;
         pos_current = pos_preds(start_point:end_point, :);
 
         x_pos = pos_current(:, 1);
@@ -194,7 +216,7 @@ function [model_params] = positionEstimatorTraining(training_data)
         firing_rate = [squeeze(avg_spike_rate(k, :, :))]; % 98 x 975
 
         input_data = [input_data, firing_rate]; % 98 x (975*8)
-        labels = ones(1, L) * k;
+        labels = ones(1, n_bins) * k;
         labels_data = [labels_data, labels];
     end
     
@@ -203,11 +225,11 @@ function [model_params] = positionEstimatorTraining(training_data)
     % Weight matrix, 99 and not 98 because we're including bias
     w = randn(n_neuron, n_trjs);
     
-    error_log = zeros(1, L * n_trjs);
-    change_log = zeros(1, L * n_trjs);
+    error_log = zeros(1, n_bins * n_trjs);
+    change_log = zeros(1, n_bins * n_trjs);
     
     % Shuffle data to avoid overfitting
-    newRowOrder = randperm(L * n_trjs);
+    newRowOrder = randperm(n_bins * n_trjs);
 %     disp(newRowOrder(1:10));
     
     % Pick a learning rate, make it tiny
@@ -215,7 +237,7 @@ function [model_params] = positionEstimatorTraining(training_data)
     % Learning rate apparently has no effect on accuracy
 %     lr = 0.00005; 
     lr = 0.001;
-    for i = 1:(L * n_trjs)
+    for i = 1:(n_bins * n_trjs)
         index = newRowOrder(i);
         
         x = input_data(index, :); % 1 x 98
@@ -258,7 +280,7 @@ function [model_params] = positionEstimatorTraining(training_data)
     whos
     
     figure
-    x_coords = [1:1:n_trjs*L];
+    x_coords = [1:1:n_trjs*n_bins];
     %plot(x_coords, error_log);
     title("Error Plot");
     figure
@@ -266,7 +288,7 @@ function [model_params] = positionEstimatorTraining(training_data)
     title("How much the weights are changing");
     
     accuracy = 0;
-    for i = 1:(L*n_trjs)
+    for i = 1:(n_bins*n_trjs)
         x = input_data(i, :); % 1 x 98
 %         x = [x, 1]; % 1 x 99
         label_pred = x * w;
@@ -278,7 +300,7 @@ function [model_params] = positionEstimatorTraining(training_data)
     end
     
     disp("Final Accuracy");
-    disp(accuracy / (L*n_trjs));
+    disp(accuracy / (n_bins*n_trjs));
     model_params.w = w;
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     %       End of Perceptron-esque  Classifier       %
