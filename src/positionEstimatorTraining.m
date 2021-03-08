@@ -24,6 +24,7 @@ function [modelParameters] = positionEstimatorTraining(training_data)
 
     % find the length of the longest trial
     L = 0;
+    disp("Finding Length of Longest trial");
     for k = 1:n_trjs
         for n = 1:n_trials    
             l = length(training_data(n,k).spikes(1,:));
@@ -32,9 +33,10 @@ function [modelParameters] = positionEstimatorTraining(training_data)
             end
         end
     end
-    fprintf("... ")
+    disp("Complete");
     
     % make all trajectories the same length
+    disp("Making all trajectories the same length");
     for k = 1:n_trjs
         for n = 1:n_trials
             for j = length(training_data(n,k).spikes(1,:)) + 1:L % adjust to max length range
@@ -43,10 +45,11 @@ function [modelParameters] = positionEstimatorTraining(training_data)
             end
         end
     end
-    fprintf("... ")
-
+    disp("Complete");
+    
     % calculate the average trajectory
     avg_trjs(n_trjs).handPos = [];
+    disp("Calculating average trajectories");
     for k = 1:n_trjs
         trj = zeros(2,L);
         for n = 1:n_trials
@@ -57,12 +60,13 @@ function [modelParameters] = positionEstimatorTraining(training_data)
         
         avg_trjs(k).handPos = trj(:,:) / n_trials;
     end
-    fprintf("... ")
+    disp("Complete");
 
     % plot average trajectory
     plot_avg_trajectories(avg_trjs)
     
     % Collect spike rate (density) function for each trial
+    disp("Collecting spike density function for each trial");
     for n = 1:n_trials
         for k = 1:n_trjs
             for i = 1:n_neuron
@@ -72,10 +76,11 @@ function [modelParameters] = positionEstimatorTraining(training_data)
             end
         end
     end
-    fprintf("... ")
+    disp("Complete");
     
     % Average spike rate (density) across all trials for each neuron
     avg_spike_rate = zeros(n_trjs, n_neuron, L);
+    disp("Calculating average spike rate across all trials for each neuron");
     for k = 1:n_trjs
         for i = 1:n_neuron
             for t = 1:L
@@ -87,7 +92,7 @@ function [modelParameters] = positionEstimatorTraining(training_data)
             end
         end
     end
-    fprintf("... ")
+    disp("Complete");
     
 %     % information theory
 %     
@@ -108,27 +113,28 @@ function [modelParameters] = positionEstimatorTraining(training_data)
     
     % Linear regression between spike densities and average trajectories
     beta = []; % 8 x 2
-    y_preds = []; % 6336 x 2
+    y_preds = []; % 7800 x 2
+    disp("Begin calculation of linear regression weights");
     for k = 1:n_trjs
 
-        pos = [avg_trjs(k).handPos(1, :); avg_trjs(k).handPos(2, :)]';
-        firing_rate = [squeeze(avg_spike_rate(k, 1, :))];
+        pos = [avg_trjs(k).handPos(1, :); avg_trjs(k).handPos(2, :)]'; % 975 x 2
+        % currently firing rate only looks at one neuron, modified
+        firing_rate = [squeeze(avg_spike_rate(k, :, :))]; %  98 x 975
         
-        beta_now = lsqminnorm(firing_rate, pos); % 1 x 2
+        beta_now = lsqminnorm(firing_rate', pos); % 1 x 2
                         
         % Append
         beta = [beta; beta_now]; % 8 x 2
                 
-        y_pred = firing_rate * beta_now; % 792 x 2
-        y_preds = [y_preds; y_pred]; % 6336 x 2
+        y_pred = firing_rate' * beta_now; % 975 x 2
+        y_preds = [y_preds; y_pred]; % 7800 x 2
         
     end
-    fprintf("... ")
+    disp("Complete");
         
     modelParameters.beta = beta;
     
     % Plot prediction
-    figure
     for k = 1:n_trjs
         
         end_point = k * L;
@@ -143,52 +149,133 @@ function [modelParameters] = positionEstimatorTraining(training_data)
         
         hold on
     end
+    axis square
+    
+   
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %       Start of Perceptron-esque Classifier        %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    
+    % The task of this network is to look at the average firing rates and
+    % guess which trajectory it is following
+    
+    % Okay, here's how we're gonna do this
+    % we're basically gonna hard code a multi layer perceptron
+    % can I even do it? who knows, but we're gonna try
+    % most of it is fine the hard part is the derivatives
+    % Hell it'll be hard to do this anyway.
+    % We're gonna make a single layer perceptron
+    % Usually Perceptron changes a tiny amount equal to the learning
+    % rate in the correct direction as that calculates how correct it is
+    % We are going to do something similar but instead of binary
+    % classification we're doing trajecotry classification
+    % the error will be how far off it is from the correct value of
+    % trajectory, which I am arbitrarily gonna range from 1 to 8
+    % The issue will be that there is little feature extraction but hey
+    % that's a problem for future us
+    
+
+    % First things first, we need input data, the average firing rate
+    input_data = [];
+    
+    % Next we need labels. These will range from 1 to 8
+    labels_data = [];
+    
+    % Fill those arrays up with data here
+    for k = 1:n_trjs
+        pos = [avg_trjs(k).handPos(1, :); avg_trjs(k).handPos(2, :)]';
+        firing_rate = [squeeze(avg_spike_rate(k, :, :))]; % 98 x 975
+
+        input_data = [input_data, firing_rate]; % 98 x (975*8)
+        labels = ones(1, 975) * k;
+        labels_data = [labels_data, labels];
+    end
+    
+    input_data = input_data'; % (975*8) x 98
+    
+    % Weight matrix, 99 and not 98 because we're including bias
+    w = randn(98, 8);
+    
+    error_log = zeros(1, 975 * 8);
+    change_log = zeros(1, 975 * 8);
+    
+    % Shuffle data to avoid overfitting
+    newRowOrder = randperm( 975 * 8 );
+    newRowOrder = randperm( 975 * 8 );
+%     disp(newRowOrder(1:10));
+    
+    % Pick a learning rate, make it tiny
+%     lr = 0.000000001; 
+    % Learning rate apparently has no effect on accuracy
+%     lr = 0.00005; 
+    lr = 0.001;
+    for i = 1:(975 * 8)
+        index = newRowOrder(i);
+        
+        x = input_data(index, :); % 1 x 98
+        
+        % apply a term to account for bias
+%         x = [x, 1]; % 1 x 99
+%         disp(size(x));
+%         disp(size(w));
+        label_pred = x * w;
+        [M,I] = max(label_pred);
+        label_index = labels_data(1,index);
+        compare_label = zeros(1,8);
+        compare_label(label_index) = 1;
+        %disp(compare_label);
+        error_log(i) = norm(compare_label - label_pred);
+        
+        for l_i = 1:8
+           if l_i ~= label_index
+               compare_label(l_i) = 0.1;
+           end
+        end
+     
+        % Update w according to the input value weighted by error and
+        % learning rate
+%         if i > 4000
+%             lr = 0.000001;
+%         end
+
+%         correct = compare_label * x;
+        if I < label_index
+            w_new = w - (compare_label' * x * error_log(i) * lr)';
+        else
+            w_new = w + (compare_label' * x * error_log(i) * lr)';
+        end
+        change_log(i) = norm(w_new - w);
+        w = w_new;
+        disp(label_pred);
+    end
     
     whos
     
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    %       Start of Neural Network Code        %
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    figure
+    x_coords = [1:1:8*975];
+    plot(x_coords, error_log);
+    title("Error Plot");
+    figure
+    plot(x_coords, change_log);
+    title("How much the weights are changing");
     
-%     % Define shape of network (basic MLP but require linear activation on
-%     % final layer due to coordinate data)
-%     
-%     network_input_data = [];
-%     network_output_data = [];
-%     for k = 1:n_trjs
-%         pos = [avg_trjs(k).handPos(1, :); avg_trjs(k).handPos(2, :)]';
-%         firing_rate = [squeeze(avg_spike_rate(k, 1, :))];
-% 
-%         network_input_data = [network_input_data; firing_rate];
-%         network_output_data = [network_output_data; pos];
-%     end
-%     
-%     layers = [ ...
-%         featureInputLayer(98)
-%         fullyConnectedLayer(500)
-%         tanhLayer
-%         fullyConnectedLayer(50)
-%         fullyConenctedLayer(2)
-%         regressionLayer
-%         ];
-%     
-%     % Parameters for training
-%     options = trainingOptions('sgdm', 'MaxEpochs', 10, 'InitialLearnRate', 0.001, 'Plots', 'training-progress');
-%     
-%     % Train the network
-%     net = trainNetwork(network_input_data, network_output_data, layers, options);
-%     
-%     % Get predictions
-%     coord_prediciton = predict(net, input_data);
-%     
-%     % Plot predictions
-%     figure
-%     x_pos = coord_prediction(:,1);
-%     y_pos = coord_prediction(:,2);
-%     plot(x_pos, y_pos, 'r')
+    accuracy = 0;
+    for i = 1:(975*8)
+        x = input_data(i, :); % 1 x 98
+%         x = [x, 1]; % 1 x 99
+        label_pred = x * w;
+%         disp(label_pred);
+        [M,I] = max(label_pred);
+        if  I == labels_data(1, i)
+            accuracy = accuracy + 1;
+        end
+    end
     
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    %       End of Neural Network Code        %
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
+    disp("Final Accuracy");
+    disp(accuracy / (975*8));
+    modelParameters.w = w;
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %       End of Perceptron-esque  Classifier       %
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    figure
 end

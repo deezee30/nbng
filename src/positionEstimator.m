@@ -46,13 +46,28 @@ function [x, y] = positionEstimator(test_data, modelParameters)
   % - [x, y]:
   %     current position of the hand
   
-    beta = modelParameters.beta; % 8 x 2
     final_input = test_data.spikes(:, end);
+    n_neuron = 98;
     
-    % TODO: convert the final_input into whatever type goes into linreg
-    %       and give us the final_firing_rate
-    final_firing_rate = ; % no idea what goes in here rn
-    [x,y] = final_firing_rate * beta;
+    % Average spike rate (density) across all trials for each neuron
+    avg_spike_rate = zeros(1, n_neuron); % 1 x 98
+    for i = 1:n_neuron
+        avg_spike_rate(i) = sum(test_data.spikes(i, :));
+    end
     
+    % Using current average spikes attempt to classify which trajecotry
+    x = avg_spike_rate; % 1 x 98
+    w = modelParameters.w;
+    label_pred = x * w;
+    [M,I] = max(label_pred);
+    
+    beta = modelParameters.beta(I); % 8 x 2
+    
+    % Convert the avg_spike_data into firing rate
+    final_firing_rate = [squeeze(avg_spike_rate)]; 
    
+    final_pred = final_firing_rate * beta;
+    
+    x = final_pred(1,1);
+    y = final_pred(1,2);
 end
