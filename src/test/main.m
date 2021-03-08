@@ -30,4 +30,8 @@ raster_plot(train, "Rasterplot for trial #" + trial_idx + ", angle #" + angle_id
 %% Test function
 clc;
 
+tic
+
 RMSE = testFunction_for_students_MTb(trial, "No Brain No Gain");
+
+toc

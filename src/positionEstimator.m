@@ -47,7 +47,7 @@ function [x, y] = positionEstimator(test_data, model_params)
   %     current position of the hand
   
     final_input = test_data.spikes(:, end);
-    n_neuron = size(training_data(1,1).spikes, 1);
+    n_neuron = size(test_data(1, 1).spikes, 1);
     
     % Average spike rate (density) across all trials for each neuron
     avg_spike_rate = zeros(1, n_neuron); % 1 x 98

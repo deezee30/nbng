@@ -29,7 +29,8 @@ function [model_params] = positionEstimatorTraining(training_data)
 
     % find the length of the longest trial
     L = 0;
-    disp("Finding Length of longest trial");
+    fprintf("\nFinding the length of longest trial... ");
+    t0 = tic; % Begin ticker
     for k = 1:n_trjs
         for n = 1:n_trials    
             l = length(training_data(n,k).spikes(1,:));
@@ -38,10 +39,11 @@ function [model_params] = positionEstimatorTraining(training_data)
             end
         end
     end
-    disp("Complete");
+    fprintf("Done (%.2f s).\n", toc(t0));
     
     % make all trajectories the same length
-    disp("Making all trajectories the same length");
+    fprintf("Making all trajectories the same length (%d pts)... ", L);
+    t0 = tic; % Begin ticker
     for k = 1:n_trjs
         for n = 1:n_trials
             for j = length(training_data(n, k).spikes(1, :)) + 1:L % adjust to max length range
@@ -52,11 +54,12 @@ function [model_params] = positionEstimatorTraining(training_data)
             end
         end
     end
-    disp("Complete");
+    fprintf("Done (%.2f s).\n", toc(t0));
     
     % calculate the average trajectory
     avg_trjs(n_trjs).handPos = [];
-    disp("Calculating average trajectories");
+    fprintf("Calculating average trajectories... ");
+    t0 = tic; % Begin ticker
     for k = 1:n_trjs
         trj = zeros(2, L);
         for n = 1:n_trials
@@ -67,16 +70,16 @@ function [model_params] = positionEstimatorTraining(training_data)
         
         avg_trjs(k).handPos = trj(:, :) / n_trials;
     end
-    disp("Complete");
+    fprintf("Done (%.2f s).\n", toc(t0));
 
     % plot average trajectory
     %plot_avg_trajectories(avg_trjs)
     
     % Collect spike rate (density) function for each trial
-    disp("Collecting spike density function for each trial");
+    fprintf("Collecting spike density function for each trial... ");
+    t0 = tic; % Begin ticker
     x = -spike_dist_window:1:spike_dist_window;
     y = normpdf(x, 0, spike_dist_std);
-
     for n = 1:n_trials
         for k = 1:n_trjs
             training_data(n, k).spikeDist = zeros(n_neuron, L);
@@ -95,11 +98,12 @@ function [model_params] = positionEstimatorTraining(training_data)
             end
         end
     end
-    disp("Complete");
+    fprintf("Done (%.2f s).\n", toc(t0));
     
     % Average spike rate (density) across all trials for each neuron
     avg_spike_rate = zeros(n_trjs, n_neuron, L);
-    disp("Calculating average spike rate across all trials for each neuron");
+    fprintf("Calculating average spike rate across all trials for each neuron... ");
+    t0 = tic; % Begin ticker
     for k = 1:n_trjs
         for i = 1:n_neuron
             for t = 1:L
@@ -111,12 +115,13 @@ function [model_params] = positionEstimatorTraining(training_data)
             end
         end
     end
-    disp("Complete");
+    fprintf("Done (%.2f s).\n", toc(t0));
     
     % Linear regression between spike densities and average trajectories
+    fprintf("Begin calculation of linear regression weights... ");
+    t0 = tic; % Begin ticker
     beta = []; % 8 x 2
     pos_preds = []; % 7800 x 2
-    disp("Begin calculation of linear regression weights");
     for k = 1:n_trjs
 
         pos = [avg_trjs(k).handPos(1, :); avg_trjs(k).handPos(2, :)]'; % 975 x 2
@@ -132,7 +137,7 @@ function [model_params] = positionEstimatorTraining(training_data)
         pos_preds = [pos_preds; pos_pred]; % 7800 x 2
         
     end
-    disp("Complete");
+    fprintf("Done (%.2f s).\n", toc(t0));
         
     model_params.beta = beta;
     
