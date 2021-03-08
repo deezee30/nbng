@@ -20,7 +20,7 @@ function [modelParameters] = positionEstimatorTraining(training_data)
     n_neuron = size(training_data(1,1).spikes, 1);  % Number of neurons
     
     % plot all trials with all trajectories
-    plot_trajectories(training_data)
+    %plot_trajectories(training_data)
 
     % find the length of the longest trial
     L = 0;
@@ -65,7 +65,7 @@ function [modelParameters] = positionEstimatorTraining(training_data)
     disp("Complete");
 
     % plot average trajectory
-    plot_avg_trajectories(avg_trjs)
+    %plot_avg_trajectories(avg_trjs)
     
     % Collect spike rate (density) function for each trial
     disp("Collecting spike density function for each trial");
@@ -269,10 +269,10 @@ function [modelParameters] = positionEstimatorTraining(training_data)
     
     figure
     x_coords = [1:1:8*975];
-    plot(x_coords, error_log);
+    %plot(x_coords, error_log);
     title("Error Plot");
     figure
-    plot(x_coords, change_log);
+    %plot(x_coords, change_log);
     title("How much the weights are changing");
     
     accuracy = 0;
