@@ -42,8 +42,6 @@ function [modelParameters] = positionEstimatorTraining(training_data)
             for j = length(training_data(n,k).spikes(1,:)) + 1:L % adjust to max length range
                 training_data(n,k).handPos = [training_data(n,k).handPos ...
                                               training_data(n,k).handPos(:, end)];
-                training_data(n,k).spikes = [training_data(n,k).spikes ...
-                                              training_data(n,k).spikes(:, end)];
             end
         end
     end
@@ -69,9 +67,9 @@ function [modelParameters] = positionEstimatorTraining(training_data)
     
     % Collect spike rate (density) function for each trial
     disp("Collecting spike density function for each trial");
-    window = 80;
+    window = 50;
     x = -window:1:window;
-    y = normpdf(x, 0, 50);
+    y = normpdf(x, 0, 15);
 
     for n = 1:n_trials
         for k = 1:n_trjs
@@ -83,7 +81,7 @@ function [modelParameters] = positionEstimatorTraining(training_data)
                 for l = 1:L
                     if training_data(n, k).spikes(i,l) == 1
                         for j = -window:window
-                            if j+l > 0 &&  j+l < L
+                            if j+l > 0 &&  j+l < max_time
                                 training_data(n, k).spikeDist(i,l+j) = training_data(n, k).spikes(i,l+j) + y(j+window+1);
                             end
                         end
