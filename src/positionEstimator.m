@@ -1,11 +1,11 @@
-function [x, y] = positionEstimator(test_data, modelParameters)
+function [x, y] = positionEstimator(test_data, model_params)
 
   % **********************************************************
   %
   % You can also use the following function header to keep your state
   % from the last iteration
   %
-  % function [x, y, newModelParameters] = positionEstimator(test_data, modelParameters)
+  % function [x, y, newmodel_params] = positionEstimator(test_data, model_params)
   %                 ^^^^^^^^^^^^^^^^^^
   % Please note that this is optional. You can still use the old function
   % declaration without returning new model parameters. 
@@ -47,7 +47,7 @@ function [x, y] = positionEstimator(test_data, modelParameters)
   %     current position of the hand
   
     final_input = test_data.spikes(:, end);
-    n_neuron = 98;
+    n_neuron = size(training_data(1,1).spikes, 1);
     
     % Average spike rate (density) across all trials for each neuron
     avg_spike_rate = zeros(1, n_neuron); % 1 x 98
@@ -57,11 +57,11 @@ function [x, y] = positionEstimator(test_data, modelParameters)
     
     % Using current average spikes attempt to classify which trajecotry
     x = avg_spike_rate; % 1 x 98
-    w = modelParameters.w;
+    w = model_params.w;
     label_pred = x * w;
     [M,I] = max(label_pred);
     
-    beta = modelParameters.beta(I); % 8 x 2
+    beta = model_params.beta(I); % 8 x 2
     
     % Convert the avg_spike_data into firing rate
     final_firing_rate = [squeeze(avg_spike_rate)]; 
