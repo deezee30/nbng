@@ -18,7 +18,7 @@ function [model_params] = positionEstimatorTraining(training_data)
     % Constants
     spike_dist_window = 80; % Window of spike density mixture model
     spike_dist_std    = 50; % Standard deviation of spike density mixture model
-    k_num_neighbours  = 5;  % Number of k-nearest neighbours used for KNN classification
+    k_num_neighbours  = 7;  % Number of k-nearest neighbours used for KNN classification
     
     n_trials = size(training_data, 1);              % Number of recorded trials
     n_trjs   = size(training_data, 2);              % Number of recorded trajectories
@@ -127,7 +127,6 @@ function [model_params] = positionEstimatorTraining(training_data)
     labels = []; % 1 x 7800
     for k = 1:n_trjs
         pos = [avg_trjs(k).handPos(1, :); avg_trjs(k).handPos(2, :)]'; % 975 x 2
-        % currently firing rate only looks at one neuron, modified
         firing_rate = [squeeze(avg_spike_rate(k, :, :))]; %  98 x 975
         
         features = [features , firing_rate];
@@ -142,7 +141,6 @@ function [model_params] = positionEstimatorTraining(training_data)
         pos_preds = [pos_preds; pos_pred]; % 7800 x 2
     end
     fprintf("Done (%.2f s).\n", toc(t0));
-        % Linear regression between spike densities and average trajectories
         
     model_params.beta = beta;
     
@@ -165,7 +163,7 @@ function [model_params] = positionEstimatorTraining(training_data)
     
     features = features'; % 7800 x 98
     labels = labels';
-    Mdl = fitcknn(features,labels, 'NumNeighbors', 8);
+    Mdl = fitcknn(features,labels, 'NumNeighbors', k_num_neighbours);
     model_params.mdl = Mdl;
     
     accuracy = 0;
