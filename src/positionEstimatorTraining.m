@@ -120,24 +120,29 @@ function [model_params] = positionEstimatorTraining(training_data)
     % Linear regression between spike densities and average trajectories
     fprintf("Begin calculation of linear regression weights... ");
     t0 = tic; % Begin ticker
-    beta = []; % 8 x 2
     pos_preds = []; % 7800 x 2
+    beta = zeros(n_trjs, n_neuron, 2); % 8 x 98 x 2
+    
+    features = []; % 98 x 7800
+    labels = []; % 1 x 7800
     for k = 1:n_trjs
-
         pos = [avg_trjs(k).handPos(1, :); avg_trjs(k).handPos(2, :)]'; % 975 x 2
         % currently firing rate only looks at one neuron, modified
         firing_rate = [squeeze(avg_spike_rate(k, :, :))]; %  98 x 975
         
-        beta_now = lsqminnorm(firing_rate', pos); % 1 x 2
+        features = [features , firing_rate];
+        these_labels = ones(1, L) * k;
+        labels = [labels , these_labels];
+        
+        beta_now = lsqminnorm(firing_rate', pos); % 98 x 2
                         
-        % Append
-        beta = [beta; beta_now]; % 8 x 2
+        beta(k, :, :) = beta_now;
                 
         pos_pred = firing_rate' * beta_now; % 975 x 2
         pos_preds = [pos_preds; pos_pred]; % 7800 x 2
-        
     end
     fprintf("Done (%.2f s).\n", toc(t0));
+        % Linear regression between spike densities and average trajectories
         
     model_params.beta = beta;
     
@@ -158,130 +163,20 @@ function [model_params] = positionEstimatorTraining(training_data)
     end
     axis square
     
-   
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    %       Start of Perceptron-esque Classifier        %
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    
-    % The task of this network is to look at the average firing rates and
-    % guess which trajectory it is following
-    
-    % Okay, here's how we're gonna do this
-    % we're basically gonna hard code a multi layer perceptron
-    % can I even do it? who knows, but we're gonna try
-    % most of it is fine the hard part is the derivatives
-    % Hell it'll be hard to do this anyway.
-    % We're gonna make a single layer perceptron
-    % Usually Perceptron changes a tiny amount equal to the learning
-    % rate in the correct direction as that calculates how correct it is
-    % We are going to do something similar but instead of binary
-    % classification we're doing trajecotry classification
-    % the error will be how far off it is from the correct value of
-    % trajectory, which I am arbitrarily gonna range from 1 to 8
-    % The issue will be that there is little feature extraction but hey
-    % that's a problem for future us
-    
-
-    % First things first, we need input data, the average firing rate
-    input_data = [];
-    
-    % Next we need labels. These will range from 1 to 8
-    labels_data = [];
-    
-    % Fill those arrays up with data here
-    for k = 1:n_trjs
-        pos = [avg_trjs(k).handPos(1, :); avg_trjs(k).handPos(2, :)]';
-        firing_rate = [squeeze(avg_spike_rate(k, :, :))]; % 98 x 975
-
-        input_data = [input_data, firing_rate]; % 98 x (975*8)
-        labels = ones(1, L) * k;
-        labels_data = [labels_data, labels];
-    end
-    
-    input_data = input_data'; % (975*8) x 98
-    
-    % Weight matrix, 99 and not 98 because we're including bias
-    w = randn(n_neuron, n_trjs);
-    
-    error_log = zeros(1, L * n_trjs);
-    change_log = zeros(1, L * n_trjs);
-    
-    % Shuffle data to avoid overfitting
-    newRowOrder = randperm(L * n_trjs);
-%     disp(newRowOrder(1:10));
-    
-    % Pick a learning rate, make it tiny
-%     lr = 0.000000001; 
-    % Learning rate apparently has no effect on accuracy
-%     lr = 0.00005; 
-    lr = 0.001;
-    for i = 1:(L * n_trjs)
-        index = newRowOrder(i);
-        
-        x = input_data(index, :); % 1 x 98
-        
-        % apply a term to account for bias
-%         x = [x, 1]; % 1 x 99
-%         disp(size(x));
-%         disp(size(w));
-        label_pred = x * w;
-        [M,I] = max(label_pred);
-        label_index = labels_data(1, index);
-        compare_label = zeros(1, n_trjs);
-        compare_label(label_index) = 1;
-        %disp(compare_label);
-        error_log(i) = norm(compare_label - label_pred);
-        
-        for l_i = 1:n_trjs
-           if l_i ~= label_index
-               compare_label(l_i) = 0.1;
-           end
-        end
-     
-        % Update w according to the input value weighted by error and
-        % learning rate
-%         if i > 4000
-%             lr = 0.000001;
-%         end
-
-%         correct = compare_label * x;
-        if I < label_index
-            w_new = w - (compare_label' * x * error_log(i) * lr)';
-        else
-            w_new = w + (compare_label' * x * error_log(i) * lr)';
-        end
-        change_log(i) = norm(w_new - w);
-        w = w_new;
-        %disp(label_pred);
-    end
-    
-    whos
-    
-    figure
-    x_coords = [1:1:n_trjs*L];
-    %plot(x_coords, error_log);
-    title("Error Plot");
-    figure
-    %plot(x_coords, change_log);
-    title("How much the weights are changing");
+    features = features'; % 7800 x 98
+    labels = labels';
+    Mdl = fitcknn(features,labels, 'NumNeighbors', 8);
+    model_params.mdl = Mdl;
     
     accuracy = 0;
-    for i = 1:(L*n_trjs)
-        x = input_data(i, :); % 1 x 98
-%         x = [x, 1]; % 1 x 99
-        label_pred = x * w;
-%         disp(label_pred);
-        [M,I] = max(label_pred);
-        if  I == labels_data(1, i)
+    for i = 1:L*n_trjs
+        x_in = features(i,:);
+        prediction = predict(Mdl, x_in);
+        if prediction == labels(i)
             accuracy = accuracy + 1;
         end
     end
-    
-    disp("Final Accuracy");
-    disp(accuracy / (L*n_trjs));
-    model_params.w = w;
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    %       End of Perceptron-esque  Classifier       %
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    disp(accuracy/(L*n_trjs));
+    whos
     figure
 end

@@ -46,28 +46,48 @@ function [x, y] = positionEstimator(test_data, model_params)
   % - [x, y]:
   %     current position of the hand
   
-    final_input = test_data.spikes(:, end);
-    n_neuron = size(test_data(1, 1).spikes, 1);
+    spike_dist_window = 80; % Window of spike density mixture model
+    spike_dist_std    = 50; % Standard deviation of spike density mixture model
+    x = -spike_dist_window:1:spike_dist_window;
+    y = normpdf(x, 0, spike_dist_std);
+
+    n_neuron = 98;
     
-    % Average spike rate (density) across all trials for each neuron
-    avg_spike_rate = zeros(1, n_neuron); % 1 x 98
+    L = size(test_data.spikes, 2);
+    
+    spikeDist = zeros(n_neuron, L);
     for i = 1:n_neuron
-        avg_spike_rate(i) = sum(test_data.spikes(i, :));
+        % Mixture model of spike distribution resembling localised (time-dependent) spike rate, binned at dt = 1 ms
+        for l = 1:L
+            if test_data.spikes(i, l) == 1
+                for j = -spike_dist_window:spike_dist_window
+                    if j+l > 0 && j+l < L
+                        spikeDist(i, l+j) = test_data.spikes(i, l+j) + y(j+spike_dist_window+1);
+                    end
+                end
+            end
+        end
     end
     
+    firing_rate = squeeze(spikeDist)'; % L x 98
+    
     % Using current average spikes attempt to classify which trajecotry
-    x = avg_spike_rate; % 1 x 98
-    w = model_params.w;
-    label_pred = x * w;
-    [M,I] = max(label_pred);
+    for n = 1: n_neuron
+        for l = 1:L
+            if firing_rate(l,n) == 0
+                firing_rate(l,n) = 0.01;
+            end
+        end
+    end
+    mdl = model_params.mdl;
+    label_pred = predict(mdl, firing_rate);
     
-    beta = model_params.beta(I); % 8 x 2
+    beta = model_params.beta; % 8 x 98 x 2
+    traj_pred = round(mean(label_pred));
     
-    % Convert the avg_spike_data into firing rate
-    final_firing_rate = [squeeze(avg_spike_rate)]; 
-   
-    final_pred = final_firing_rate * beta;
-    
+    beta_label = beta(traj_pred, :, :); % 1 x 98 x 2
+    final_pred = firing_rate(end,:) * squeeze(beta_label); % 1 x 2
     x = final_pred(1,1);
     y = final_pred(1,2);
+    disp(final_pred);
 end
