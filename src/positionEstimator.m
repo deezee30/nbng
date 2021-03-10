@@ -1,4 +1,4 @@
-function [x, y] = positionEstimator(test_data, model_params)
+function [x, y, new_params] = positionEstimator(test_data, model_params)
 
   % **********************************************************
   %
@@ -46,28 +46,84 @@ function [x, y] = positionEstimator(test_data, model_params)
   % - [x, y]:
   %     current position of the hand
   
-    final_input = test_data.spikes(:, end);
-    n_neuron = size(test_data(1, 1).spikes, 1);
+    spike_dist_window = 80; % Window of spike density mixture model
+    spike_dist_std    = 50; % Standard deviation of spike density mixture model
+    n_neuron          = 98; % Number of neurons
+    bin_size = model_params.bin_size;
     
-    % Average spike rate (density) across all trials for each neuron
-    avg_spike_rate = zeros(1, n_neuron); % 1 x 98
+    L = size(test_data.spikes, 2);
+    n_bins = fix(L/bin_size) + 1;
+%     disp(n_bins);
+
+    edges = fix(linspace(1, L, n_bins));
+
+    % Binning spikes into n_bins bins to save processing time
+    discSpikes = disc_bin(test_data.spikes(:, :), edges);
+        
+    % Collect spike rate (density) function for each trial
+    x_window = -spike_dist_window:1:spike_dist_window;
+    y_gauss = normpdf(x_window, 0, spike_dist_std);
+
+    spikeDist = zeros(n_neuron, n_bins);
     for i = 1:n_neuron
-        avg_spike_rate(i) = sum(test_data.spikes(i, :));
+        % Mixture model of spike distribution resembling localised (time-dependent)
+        % spike rate, binned at (L/n_bins) widths.
+        for bin = 1:n_bins
+            if discSpikes(i, bin) > 0
+                for j = -spike_dist_window:spike_dist_window
+                    if j+bin > 0 && j+bin < n_bins
+                        spikeDist(i, bin+j) = discSpikes(i, bin+j) + y_gauss(j+spike_dist_window+1);
+                    end
+                end
+            end
+        end
     end
+%     disp(spikeDist(1,:));
+    noise = randn(n_neuron, n_bins) / 5;
+    for i = 1:n_neuron
+        for bin = 1:n_bins
+            if spikeDist(i, bin) > 0
+                n = noise(i, bin);
+                if  noise(i, bin) < 0
+                    n = n * -1;
+                end
+                spikeDist(i,bin) = spikeDist(i,bin) + n;
+            end
+        end
+    end
+%     spikeDist = spikeDist + noise;
     
     % Using current average spikes attempt to classify which trajecotry
-    x = avg_spike_rate; % 1 x 98
-    w = model_params.w;
-    label_pred = x * w;
-    [M,I] = max(label_pred);
+    % If first iteration use the predictor to calculate the label
+    label_pred = 0;
+    new_params = model_params;
+    if L == 320
+        label_pred = mode(predict(model_params.mdl, spikeDist'));
+        new_params.label = label_pred;
+    % If subsequent loops use the recorded value in model_params
+    else
+        label_pred = model_params.label;
+    end
     
-    beta = model_params.beta(I); % 8 x 2
+    beta = model_params.beta; % 8 x 98 x 2
     
-    % Convert the avg_spike_data into firing rate
-    final_firing_rate = [squeeze(avg_spike_rate)]; 
-   
-    final_pred = final_firing_rate * beta;
-    
-    x = final_pred(1,1);
-    y = final_pred(1,2);
+    beta_label = beta(label_pred, :, :); % 1 x 98 x 2
+    final_pred = (spikeDist') * squeeze(beta_label); % n_bins x 2
+    final_pred = final_pred;
+    x = final_pred(end-1,1);
+    y = final_pred(end-1,2);
+    if (x^2 + y^2) > 150^2
+        x = 0;
+        y = 0;
+    end
+%     disp(L);
+%     plot_x = final_pred(:,1);
+%     plot_y = final_pred(:,2);
+%     plot(plot_x, plot_y)
+%     hold on
+%     disp(final_pred);
+%     x_coord = [1:1:n_bins];
+%     plot(x_coord, spikeDist(1,:), 'b')
+%     hold on
+%     figure
 end
