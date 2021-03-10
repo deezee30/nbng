@@ -155,9 +155,18 @@ function [model_params] = positionEstimatorTraining(training_data)
     
     features = []; % 98 x (n_bins*8)
     labels = []; % 1 x (n_bins*8)
+    avg_start = zeros(n_trjs, 2);
+    avg_final = zeros(n_trjs, 2);
+    for i = 1:n_trjs
+        avg_start(i,:) = [avg_trjs(i).handPos(1, 1), avg_trjs(i).handPos(2, 1)];
+        avg_final(i,:) = [mean(avg_trjs(i).handPos(1, :)), mean(avg_trjs(i).handPos(2, :))];
+    end
+    model_params.avg_start = avg_start;
+    model_params.avg_final = avg_final;
+        
     for k = 1:n_trjs
 
-        pos = [avg_trjs(k).handPos(1, :); avg_trjs(k).handPos(2, :)]'; % n_bins x 2
+        pos = [avg_trjs(k).handPos(1, :) - avg_start(k,1); avg_trjs(k).handPos(2, :) - avg_start(k,2)]'; % n_bins x 2
         firing_rate = [squeeze(avg_spike_rate(k, :, :))]; %  98 x n_bins
         
         features = [features , firing_rate];
@@ -186,8 +195,8 @@ function [model_params] = positionEstimatorTraining(training_data)
 %         start_point = ( (k-1) * n_bins ) + 1;
 %         pos_current = pos_preds(start_point:end_point, :);
 % 
-%         x_pos = pos_current(:, 1)';
-%         y_pos = pos_current(:, 2)';
+%         x_pos = pos_current(:, 1)' + avg_start_x;
+%         y_pos = pos_current(:, 2)' + avg_start_y;
 % 
 %         plot(x_pos, y_pos, 'b')
 %         hold on
@@ -211,14 +220,7 @@ function [model_params] = positionEstimatorTraining(training_data)
     end
     disp("Accuracy of classifier:");
     disp(accuracy/(n_bins*n_trjs));
-%     x_coord = [1:1:n_bins];
-%     features = features';
-%     for t = 1:n_trjs
-%         figure
-%         for i = 1:n_neuron
-%             plot(x_coord, features(i,((t-1)*n_bins) + 1 :t * n_bins), 'b')
-%             hold on
-%         end
-%     end
     whos
+    disp(avg_start);
+    disp(avg_final);
 end

@@ -78,20 +78,18 @@ function [x, y, new_params] = positionEstimator(test_data, model_params)
             end
         end
     end
-%     disp(spikeDist(1,:));
-    noise = randn(n_neuron, n_bins) / 5;
-    for i = 1:n_neuron
-        for bin = 1:n_bins
-            if spikeDist(i, bin) > 0
-                n = noise(i, bin);
-                if  noise(i, bin) < 0
-                    n = n * -1;
-                end
-                spikeDist(i,bin) = spikeDist(i,bin) + n;
-            end
-        end
-    end
-%     spikeDist = spikeDist + noise;
+%     noise = randn(n_neuron, n_bins) / 5;
+%     for i = 1:n_neuron
+%         for bin = 1:n_bins
+%             if spikeDist(i, bin) > 0
+%                 n = noise(i, bin);
+%                 if  noise(i, bin) < 0
+%                     n = n * -1;
+%                 end
+%                 spikeDist(i,bin) = spikeDist(i,bin) + n;
+%             end
+%         end
+%     end
     
     % Using current average spikes attempt to classify which trajecotry
     % If first iteration use the predictor to calculate the label
@@ -109,21 +107,24 @@ function [x, y, new_params] = positionEstimator(test_data, model_params)
     
     beta_label = beta(label_pred, :, :); % 1 x 98 x 2
     final_pred = (spikeDist') * squeeze(beta_label); % n_bins x 2
-    final_pred = final_pred;
-    x = final_pred(end-1,1);
-    y = final_pred(end-1,2);
-    if (x^2 + y^2) > 150^2
-        x = 0;
-        y = 0;
+    
+    avg_final_x = model_params.avg_final(label_pred,1);
+    avg_final_y = model_params.avg_final(label_pred,2);
+    
+    avg_start_x = model_params.avg_start(label_pred,1);
+    avg_start_y = model_params.avg_start(label_pred,2);
+    
+    x = final_pred(end-1,1) + avg_start_x;
+    y = final_pred(end-1,2) + avg_start_y;
+    dist = sqrt(x^2 + y^2);
+    if dist > 130
+        mod = dist/100;
+        x = x / mod;
+        y = y / mod;
     end
-%     disp(L);
-%     plot_x = final_pred(:,1);
-%     plot_y = final_pred(:,2);
-%     plot(plot_x, plot_y)
-%     hold on
-%     disp(final_pred);
-%     x_coord = [1:1:n_bins];
-%     plot(x_coord, spikeDist(1,:), 'b')
-%     hold on
-%     figure
+    
+    if dist > 130
+        x = avg_final_x;
+        y = avg_final_y;
+    end
 end
