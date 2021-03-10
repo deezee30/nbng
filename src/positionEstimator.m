@@ -50,10 +50,10 @@ function [x, y, new_params] = positionEstimator(test_data, model_params)
     spike_dist_std    = 50; % Standard deviation of spike density mixture model
     n_neuron          = 98; % Number of neurons
     bin_size = model_params.bin_size;
+    bin_size_knn = model_params.bin_size_knn;
     
     L = size(test_data.spikes, 2);
     n_bins = fix(L/bin_size) + 1;
-%     disp(n_bins);
 
     edges = fix(linspace(1, L, n_bins));
 
@@ -78,6 +78,30 @@ function [x, y, new_params] = positionEstimator(test_data, model_params)
             end
         end
     end
+    
+    n_bins_knn = fix(L/bin_size_knn) + 1;
+    edges = fix(linspace(1, L, n_bins_knn));
+    
+    % Binning spikes into n_bins_knn bins to save processing time
+    discSpikes_knn = disc_bin(test_data.spikes(:, :), edges);
+
+    spikeDist_knn = zeros(n_neuron, n_bins_knn);
+    for i = 1:n_neuron
+        % Mixture model of spike distribution resembling localised (time-dependent)
+        % spike rate, binned at (L/n_bins) widths.
+        for bin = 1:n_bins_knn
+            if discSpikes_knn(i, bin) > 0
+                for j = -spike_dist_window:spike_dist_window
+                    if j+bin > 0 && j+bin < n_bins_knn
+                        spikeDist_knn(i, bin+j) = discSpikes_knn(i, bin+j) + y_gauss(j+spike_dist_window+1);
+                    end
+                end
+            end
+        end
+    end 
+    
+    
+    
 %     noise = randn(n_neuron, n_bins) / 5;
 %     for i = 1:n_neuron
 %         for bin = 1:n_bins
@@ -96,9 +120,9 @@ function [x, y, new_params] = positionEstimator(test_data, model_params)
     label_pred = 0;
     new_params = model_params;
     if L == 320
-        label_pred = mode(predict(model_params.mdl, spikeDist'));
+        label_pred = mode(predict(model_params.mdl, spikeDist_knn'));
         new_params.label = label_pred;
-    % If subsequent loops use the recorded value in model_params
+    % If not first loop use the recorded value in model_params
     else
         label_pred = model_params.label;
     end
