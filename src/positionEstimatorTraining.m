@@ -19,7 +19,7 @@ function [model_params] = positionEstimatorTraining(training_data)
     spike_dist_window = 80; % Window of spike density mixture model
     spike_dist_std    = 50; % Standard deviation of spike density mixture model
     k_num_neighbours  = 8;  % Number of k-nearest neighbours used for KNN classification
-    n_bins            = 20; % Number of spike bins of a neuron
+    n_bins            = 25; % Number of spike bins of a neuron
     n_bins_knn        = 50; % Number of spike bins of a neuron used for KNN classification
     
     n_trials = size(training_data, 1);              % Number of recorded trials
@@ -85,9 +85,6 @@ function [model_params] = positionEstimatorTraining(training_data)
         avg_trjs(k).handPos = avg_hand_pos;
     end
     fprintf("Done (%.2f s).\n", toc(t_start));
-
-    % plot average trajectory
-    %plot_avg_trajectories(avg_trjs)
                 
     % Binning spikes into n_bins bins to save processing time
     fprintf("Coverting from %d bins to %d bins... ", L, n_bins);
@@ -155,13 +152,16 @@ function [model_params] = positionEstimatorTraining(training_data)
     beta = zeros(n_trjs, n_neuron, 2); % 8 x 98 x 2
     
     avg_start = zeros(n_trjs, 2);
-    avg_final = zeros(n_trjs, 2);
+    avg_mean = zeros(n_trjs, 2);
+    avg_final_coord = zeros(n_trjs, 2);
     for i = 1:n_trjs
-        avg_start(i,:) = [avg_trjs(i).handPos(1, 1), avg_trjs(i).handPos(2, 1)];
-        avg_final(i,:) = [mean(avg_trjs(i).handPos(1, :)), mean(avg_trjs(i).handPos(2, :))];
+        avg_start(i,:) = [mean(avg_trjs(i).handPos(1, 1:2)), mean(avg_trjs(i).handPos(2, 1:2))];
+        avg_mean(i,:) = [mean(avg_trjs(i).handPos(1, :)), mean(avg_trjs(i).handPos(2, :))];
+        avg_final_coord(i,:) = [mean(avg_trjs(i).handPos(1, fix(n_bins * 0.8) : n_bins-2)), mean(avg_trjs(i).handPos(2, fix(n_bins * 0.8) : n_bins-2))];
     end
     model_params.avg_start = avg_start;
-    model_params.avg_final = avg_final;
+    model_params.avg_mean = avg_mean;
+    model_params.avg_final_coord = avg_final_coord;
         
     for k = 1:n_trjs
 
@@ -190,12 +190,15 @@ function [model_params] = positionEstimatorTraining(training_data)
 %         start_point = ( (k-1) * n_bins ) + 1;
 %         pos_current = pos_preds(start_point:end_point, :);
 % 
-%         x_pos = pos_current(:, 1)' + avg_start_x;
-%         y_pos = pos_current(:, 2)' + avg_start_y;
+%         x_pos = pos_current(:, 1)' + avg_start(k,1);
+%         y_pos = pos_current(:, 2)' + avg_start(k,2);
 % 
 %         plot(x_pos, y_pos, 'b')
 %         hold on
+%         
+%         plot(avg_trjs(k).handPos(1,:), avg_trjs(k).handPos(2,:), 'r')
 %     end
+%     %plot average trajectory
 %     axis square
 %     hold off
 %     figure
@@ -265,7 +268,7 @@ function [model_params] = positionEstimatorTraining(training_data)
         firing_rate = [squeeze(avg_spike_rate(k, :, :))]; %  98 x n_bins_knn
         features = [features , firing_rate];
         these_labels = ones(1, n_bins_knn) .* k;
-        labels = [labels , these_labels];
+        labels = [labels, these_labels];
         
     end
     
@@ -286,4 +289,5 @@ function [model_params] = positionEstimatorTraining(training_data)
     disp("Accuracy of classifier:");
     disp(accuracy/(n_bins*n_trjs));
     whos
+    disp(avg_final_coord);
 end

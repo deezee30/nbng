@@ -87,8 +87,6 @@ function [x, y, new_params] = positionEstimator(test_data, model_params)
 
     spikeDist_knn = zeros(n_neuron, n_bins_knn);
     for i = 1:n_neuron
-        % Mixture model of spike distribution resembling localised (time-dependent)
-        % spike rate, binned at (L/n_bins) widths.
         for bin = 1:n_bins_knn
             if discSpikes_knn(i, bin) > 0
                 for j = -spike_dist_window:spike_dist_window
@@ -100,22 +98,8 @@ function [x, y, new_params] = positionEstimator(test_data, model_params)
         end
     end 
     
-    
-    
-%     noise = randn(n_neuron, n_bins) / 5;
-%     for i = 1:n_neuron
-%         for bin = 1:n_bins
-%             if spikeDist(i, bin) > 0
-%                 n = noise(i, bin);
-%                 if  noise(i, bin) < 0
-%                     n = n * -1;
-%                 end
-%                 spikeDist(i,bin) = spikeDist(i,bin) + n;
-%             end
-%         end
-%     end
-    
     % Using current average spikes attempt to classify which trajecotry
+    
     % If first iteration use the predictor to calculate the label
     label_pred = 0;
     new_params = model_params;
@@ -132,23 +116,29 @@ function [x, y, new_params] = positionEstimator(test_data, model_params)
     beta_label = beta(label_pred, :, :); % 1 x 98 x 2
     final_pred = (spikeDist') * squeeze(beta_label); % n_bins x 2
     
-    avg_final_x = model_params.avg_final(label_pred,1);
-    avg_final_y = model_params.avg_final(label_pred,2);
+    mean_x = model_params.avg_mean(label_pred,1);
+    mean_y = model_params.avg_mean(label_pred,2);
     
     avg_start_x = model_params.avg_start(label_pred,1);
     avg_start_y = model_params.avg_start(label_pred,2);
     
+    final_coord_x = model_params.avg_final_coord(label_pred,1);
+    final_coord_y = model_params.avg_final_coord(label_pred,2);
+
     x = final_pred(end-1,1) + avg_start_x;
     y = final_pred(end-1,2) + avg_start_y;
     dist = sqrt(x^2 + y^2);
-    if dist > 130
-        mod = dist/100;
-        x = x / mod;
-        y = y / mod;
-    end
     
     if dist > 130
-        x = avg_final_x;
-        y = avg_final_y;
+        if L > 500
+            x = final_coord_x;
+            y = final_coord_y;
+        else if L < 380
+            x = avg_start_x;
+            y = avg_start_y;
+        else
+            x = mean_x;
+            y = mean_y;
+        end
     end
 end
