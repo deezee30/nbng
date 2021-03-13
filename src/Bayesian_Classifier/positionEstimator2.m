@@ -1,4 +1,5 @@
 function [x, y] = positionEstimator(test_data, model_params)
+
 % - test_data:
 %     test_data(m).trialID
 %         unique trial ID
@@ -24,20 +25,41 @@ function [x, y] = positionEstimator(test_data, model_params)
 %             test_data.decodedHandPos = [2.3; 1.5]
 %             test_data.spikes = 98x340 matrix of spiking activity
 
-[n_trials, n_angles] = size(training_data);
-[n_neurons, time_lenght] = size(training_data(1,1).spikes);
+[n_neurons, time_lenght] = size(test_data.spikes);
 time_window = 300;
 
 % transform the dataset to spikes count normalized
-transformed_data = zeros(n_neurons);
+transformed_data = zeros(1,n_neurons);
 for neu = 1:n_neurons
     transformed_data(neu) =  sum(test_data.spikes(neu, 1:time_window))/time_window;
 end
 
-% TODO: find greatest likelihood
+% prob of being a class, look for the greatest
+max_prob = 0;
+max_prob_class = 0;
+for pred_label = 1:8
+   % just compute the gaussian likelihood
+   cov_mat = squeeze(model_params.covariances(pred_label, :, :));
+   means = model_params.means(pred_label, :);
+   coef = 1/sqrt((2*pi)^n_neurons * norm(cov_mat));
+   prob_class = coef * exp(-0.5*(transformed_data - means')' * cov_mat^-1 * (transformed_data - means'));
 
-% TODO: find trajectory on average trajectory after given time step (length of spikes) 
-  
-  
-  
+   % check this is the greatest or not, assume the p(class) is the
+   % same for all classes
+   if prob_class > max_prob
+       max_prob_class = pred_label;
+       max_prob = prob_class;
+   end
+end
+
+% find trajectory on average trajectory after given time step (length of spikes) 
+avg_traj = cell2mat(model_params.trajectories(max_prob_class));
+if time_lenght < size(avg_traj,2)
+    x = avg_traj(1, time_lenght);
+    y = avg_traj(2, time_lenght);
+else
+    x = avg_traj(end);
+    y = avg_traj(end);
+end
+
 end

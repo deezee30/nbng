@@ -22,13 +22,15 @@ for ang = 1:n_angles
     modelParameters.covariances(ang, :, :) = cov(squeeze(transformed_data(ang, :, :))) + eye(n_neurons)*cov_condition;
 end
 
+%{
+%%%%%%%%%%%%%%%%%%%%%%%% TODO DELETE WHEN SENDING %%%%%%%%%%%%%%%%%%%%%
 disp('Estimate the accuracy on the training dataset');
 
 % estimate accuracy on the training dataset
 count_right = 0;
 count_wrong = 0;
 
-% go throug all the training dataset
+% go through all the training dataset
 for real_label = 1:n_angles  
     for sample = 1:n_trials
        % prob of being a class, look for the greatest
@@ -64,5 +66,27 @@ disp('wrong guesses: ');
 disp(count_wrong);
 disp('accuracy on the training dataset: ');
 disp(count_right/(count_right+count_wrong));
- 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%}
+
+% find average trajectory for each angle
+modelParameters.trajectories = {};
+for ang = 1:n_angles    
+    % make the handPos trajectories all the same length and find average
+    traj = training_data(1,ang).handPos;
+    for trial = 2:n_trials
+        current_traj = training_data(trial,ang).handPos;
+        if length(current_traj) < length(traj)
+            traj(:, 1:length(current_traj)) = traj(:, 1:length(current_traj)) + current_traj;
+            traj(:, 1:length(current_traj)) = traj(:, 1:length(current_traj))/2;
+        elseif length(current_traj) > length(traj)
+            current_traj(:, 1:length(traj)) = current_traj(:, 1:length(traj)) + traj;
+            current_traj(:, 1:length(traj)) = current_traj(:, 1:length(traj))/2;
+            traj = current_traj;
+        end
+    end
+    modelParameters.trajectories = [modelParameters.trajectories, traj];
+end
+
 end
