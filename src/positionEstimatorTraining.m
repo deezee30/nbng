@@ -19,8 +19,7 @@ function [model_params] = positionEstimatorTraining(training_data)
     spike_dist_window = 80; % Window of spike density mixture model
     spike_dist_std    = 50; % Standard deviation of spike density mixture model
     k_num_neighbours  = 8;  % Number of k-nearest neighbours used for KNN classification
-    n_bins            = 25; % Number of spike bins of a neuron
-    n_bins_knn        = 50; % Number of spike bins of a neuron used for KNN classification
+    n_bins            = 50; % Number of spike bins 
     
     n_trials = size(training_data, 1);              % Number of recorded trials
     n_trjs   = size(training_data, 2);              % Number of recorded trajectories
@@ -144,130 +143,26 @@ function [model_params] = positionEstimatorTraining(training_data)
     
 %     figure
 %     plot(edges, squeeze(avg_spike_rate(1, 1, :)))
-    
-    % Linear regression between spike densities and average trajectories
-    fprintf("Begin calculation of linear regression weights... ");
-    t_start = tic; % Begin ticker
-    pos_preds = []; % (n_bins*8) x 2
-    beta = zeros(n_trjs, n_neuron, 2); % 8 x 98 x 2
-    
-    avg_start = zeros(n_trjs, 2);
-    avg_mean = zeros(n_trjs, 2);
-    avg_final_coord = zeros(n_trjs, 2);
-    for i = 1:n_trjs
-        avg_start(i,:) = [mean(avg_trjs(i).handPos(1, 1:2)), mean(avg_trjs(i).handPos(2, 1:2))];
-        avg_mean(i,:) = [mean(avg_trjs(i).handPos(1, :)), mean(avg_trjs(i).handPos(2, :))];
-        avg_final_coord(i,:) = [mean(avg_trjs(i).handPos(1, fix(n_bins * 0.8) : n_bins-2)), mean(avg_trjs(i).handPos(2, fix(n_bins * 0.8) : n_bins-2))];
-    end
-    model_params.avg_start = avg_start;
-    model_params.avg_mean = avg_mean;
-    model_params.avg_final_coord = avg_final_coord;
-        
-    for k = 1:n_trjs
 
-        pos = [avg_trjs(k).handPos(1, :) - avg_start(k,1); avg_trjs(k).handPos(2, :) - avg_start(k,2)]'; % n_bins x 2
-        firing_rate = [squeeze(avg_spike_rate(k, :, :))]; %  98 x n_bins
-        
-        beta_now = lsqminnorm(firing_rate', pos); % 98 x 2
-                        
-        beta(k, :, :) = beta_now;
-                
-        pos_pred = firing_rate' * beta_now; % n_bins x 2
-        pos_preds = [pos_preds; pos_pred]; % (n_bins*8) x 2
-        
-    end
-    fprintf("Done (%.2f s).\n", toc(t_start));
-        
-    model_params.beta = beta;
-    
-    % Plot prediction
-%     figure(1)
-%     title('Current Predictions')
-%     hold on
-%     for k = 1:n_trjs
-%         end_point = k * n_bins;
-%         
-%         start_point = ( (k-1) * n_bins ) + 1;
-%         pos_current = pos_preds(start_point:end_point, :);
-% 
-%         x_pos = pos_current(:, 1)' + avg_start(k,1);
-%         y_pos = pos_current(:, 2)' + avg_start(k,2);
-% 
-%         plot(x_pos, y_pos, 'b')
-%         hold on
-%         
-%         plot(avg_trjs(k).handPos(1,:), avg_trjs(k).handPos(2,:), 'r')
-%     end
-%     %plot average trajectory
-%     axis square
-%     hold off
-%     figure
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%           Begin 'Regression'          %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+    % Record approximate positions
+    model_params.avg_trjs = avg_trjs;
+       
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %       Begin KNN Classification        %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    edges = fix(linspace(1, L, n_bins_knn));   
-    bin_size =  edges(2) - edges(1); % Bin size of spike time spans
-    model_params.bin_size_knn = bin_size;
-
-    % Binning spikes into n_bins bins to save processing time
-    fprintf("Classification Stage: Coverting from %d bins to %d bins... ", L, n_bins_knn);
-    t_start = tic; % Begin ticker
-    for n = 1:n_trials
-        for k = 1:n_trjs
-            training_data(n, k).discSpikes = disc_bin(training_data(n, k).spikes(:, :), edges);
-        end
-    end
-    fprintf("Done (%.2f s).\n", toc(t_start));
-        
-    % Collect spike rate (density) function for each trial
-    fprintf("Classification Stage: Collecting spike density function for each trial... ");
-    t_start = tic; % Begin ticker
-    x = -spike_dist_window:1:spike_dist_window;
-    y = normpdf(x, 0, spike_dist_std);
-    for n = 1:n_trials
-        for k = 1:n_trjs
-            training_data(n, k).spikeDist = zeros(n_neuron, n_bins_knn);
-            for i = 1:n_neuron
-                for bin = 1:n_bins_knn
-                    if training_data(n, k).discSpikes(i, bin) > 0
-                        for j = -spike_dist_window:spike_dist_window
-                            if j+bin > 0 && j+bin < n_bins_knn
-                                training_data(n, k).spikeDist(i, bin+j) = training_data(n, k).discSpikes(i, bin+j) ...
-                                                                        + y(j+spike_dist_window+1);
-                            end
-                        end
-                    end
-                end
-            end
-        end
-    end
-    fprintf("Done (%.2f s).\n", toc(t_start));
     
-    % Average spike rate (density) across all trials for each neuron
-    avg_spike_rate = zeros(n_trjs, n_neuron, n_bins_knn);
-    fprintf("Classification Stage: Calculating average spike rate across all trials for each neuron... ");
-    t_start = tic; % Begin ticker
-    for k = 1:n_trjs
-        for i = 1:n_neuron
-            for bin = 1:n_bins_knn
-                spike_sum = 0;
-                for n = 1:n_trials
-                    spike_sum = spike_sum + training_data(n, k).spikeDist(i, bin);
-                end
-                avg_spike_rate(k, i, bin) = spike_sum / n_trials;
-            end
-        end
-    end
-    fprintf("Done (%.2f s).\n", toc(t_start));
-    
-    features = []; % 98 x (n_bins_knn*8)
-    labels = []; % 1 x (n_bins_knn*8)
+    features = []; % 98 x (n_bins*8)
+    labels = []; % 1 x (n_bins*8)
         
     for k = 1:n_trjs
-        firing_rate = [squeeze(avg_spike_rate(k, :, :))]; %  98 x n_bins_knn
+        firing_rate = [squeeze(avg_spike_rate(k, :, :))]; %  98 x n_bins
         features = [features , firing_rate];
-        these_labels = ones(1, n_bins_knn) .* k;
+        these_labels = ones(1, n_bins) .* k;
         labels = [labels, these_labels];
         
     end
@@ -286,8 +181,7 @@ function [model_params] = positionEstimatorTraining(training_data)
             accuracy = accuracy + 1;
         end
     end
-    disp("Accuracy of classifier:");
-    disp(accuracy/(n_bins*n_trjs));
+    fprintf("Accuracy of classifier %.2f \%.\n", accuracy/(n_bins*n_trjs));
+
     whos
-    disp(avg_final_coord);
 end
