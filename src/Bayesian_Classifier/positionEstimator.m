@@ -42,7 +42,7 @@ for pred_label = 1:8
    cov_mat = squeeze(model_params.covariances(pred_label, :, :));
    means = model_params.means(pred_label, :);
    coef = 1/sqrt((2*pi)^n_neurons * norm(cov_mat));
-   prob_class = coef * exp(-0.5*(transformed_data - means')' * cov_mat^-1 * (transformed_data - means'));
+   prob_class = coef * exp(-0.5*(transformed_data' - means')' * (cov_mat^-1) * (transformed_data' - means'));
 
    % check this is the greatest or not, assume the p(class) is the
    % same for all classes
@@ -58,8 +58,8 @@ if time_lenght < size(avg_traj,2)
     x = avg_traj(1, time_lenght);
     y = avg_traj(2, time_lenght);
 else
-    x = avg_traj(end);
-    y = avg_traj(end);
+    x = avg_traj(1, end);
+    y = avg_traj(2, end);
 end
 
 end
