@@ -44,7 +44,7 @@ function [x, y, new_params] = positionEstimator(test_data, model_params)
         % prob of being a class, look for the greatest
         max_prob = 0;
         max_prob_class = 0;
-        for pred_label = 1:8
+        for pred_label = 1:8*2
            % just compute the gaussian likelihood
            cov_mat = squeeze(model_params.covariances(pred_label, :, :));
            means = model_params.means(pred_label, :);
@@ -62,6 +62,7 @@ function [x, y, new_params] = positionEstimator(test_data, model_params)
         
         label_pred = max_prob_class;
         new_params.label = label_pred;
+%         disp(label_pred);
 
     % If not first loop use the recorded value in model_params
     else
