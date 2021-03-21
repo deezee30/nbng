@@ -72,33 +72,37 @@ function [x, y, newParameters] = positionEstimator(past_current_trial, modelPara
 %                 7;8; ];                       SVM 7
             
     if max_time == 320  %means we don't have a class yet
-        
-        prediction_vector = zeros(1,nchoosek(num_classes, 2)); %for each test instance (20*8) we wil come up with 28 predictions (as we trained 28 pairwise models). Here we save the decisions of each classifier for the corresponding row's trial
-        preds = zeros(7,1);
-        for svm_num = 1:7
-            % classes now contain the list of classes
-            pred = svmPredict_nested(modelParameters.model{svm_num},spikes);
-            preds(svm_num) = pred;
-        end
-        if  preds(1) == 0 && preds(2) == 0 && preds(4) == 0
-            decision = 1;
-        elseif preds(1) == 0 && preds(2) == 0 && preds(4) == 1
-            decision = 2;
-        elseif preds(1) == 0 && preds(2) == 1 && preds(5) == 0
-            decision = 3;
-        elseif preds(1) == 0 && preds(2) == 1 && preds(5) == 1
-            decision = 4;
-        elseif preds(1) == 1 && preds(3) == 0 && preds(6) == 0
-            decision = 5;
-        elseif preds(1) == 1 && preds(3) == 0 && preds(6) == 1
-            decision = 6;
-        elseif preds(1) == 1 && preds(3) == 1 && preds(7) == 0
-            decision = 7;
-        elseif preds(1) == 1 && preds(3) == 1 && preds(7) == 1
-            decision = 8;
+        decision = 0;
+        if svmPredict_nested(modelParameters.model{1},spikes) == 0
+            if svmPredict_nested(modelParameters.model{2},spikes) == 0
+                if svmPredict_nested(modelParameters.model{4},spikes) == 0
+                    decision = 1;
+                else
+                    decision = 2;
+                end
+            else
+                if svmPredict_nested(modelParameters.model{5},spikes) == 0
+                    decision = 3;
+                else
+                    decision = 4;
+                end
+            end
         else
-            disp('ERROR');
+            if svmPredict_nested(modelParameters.model{3},spikes) == 0
+                if svmPredict_nested(modelParameters.model{6},spikes) == 0
+                    decision = 5;
+                else
+                    decision = 6;
+                end
+            else
+                if svmPredict_nested(modelParameters.model{7},spikes) == 0
+                    decision = 7;
+                else
+                    decision = 8;
+                end
+            end
         end
+        
         newParameters.prediction = decision;
     else
         decision = modelParameters.prediction;
