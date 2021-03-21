@@ -36,28 +36,31 @@ function [x, y, new_params] = positionEstimator(test_data, model_params)
     if L == 320
         mean_test = mean(test_data.spikes');
         
-        % Classification of angle, preset of firing rates if it's the first one
+        % Classification of k, preset of firing rates if it's the first one
         % Best Hyperparameters: k=50, coeff=1
         coeff = 1;
-        k = 52;
+        k_nn = 52; % Nearest neighbours
         mean_320 = zeros(K, N, T);
-        for ang_test = 1:K
-            for te = 1:T
-                mean_320(ang_test, :, te) = mean(trial(te, ang_test).spikes(:, 1:320)')';
+        for k = 1:K
+            for m = 1:T
+                mean_320(k, :, m) = mean(trial(m, k).spikes(:, 1:320)')';
             end
         end
         
         distances = zeros(K, T);
-        for ang = 1:K
-            for tr = 1:T
-                distances(ang, tr) = power(sum(abs(power((mean_test-mean_320(ang, :, tr)), coeff))), 1/coeff);
+        for k = 1:K % For each trajectory
+            for m = 1:T % For each trial
+                distances(k, m) = power(sum(abs(power((mean_test-mean_320(k, :, m)), coeff))), 1/coeff);
             end
         end
         
-        [num_class, T] = size(distances);
-        [~, I] = sort(reshape(distances', [num_class * T, 1]));
-        num_nn = zeros(num_class, 1);
-        for i = 1:k
+        [n_classes, T] = size(distances);
+        % sort the distance list in ascending order
+        [~, I] = sort(reshape(distances', [n_classes * T, 1]));
+        
+        % populate with the first k_nn distances
+        num_nn = zeros(n_classes, 1);
+        for i = 1:k_nn
             num_nn(ceil(I(i)/T)) = num_nn(ceil(I(i)/T)) + 1;
         end
         
@@ -69,46 +72,46 @@ function [x, y, new_params] = positionEstimator(test_data, model_params)
     window = 20;
     delay = 0;
     coeff_weight = 5;
-    k = 33; % Number of nearest neighbours
+    k_nn = 33; % Number of nearest neighbours
     coeff = 2;
     eps = 1e-35;
     mean_test = mean(test_data.spikes(:, L-window-delay:L-delay)');
-    angle = new_params.angle;
+    k = new_params.angle;
 
     % Create Firing rate of specific Window and Delay
     mean_window = zeros(T, N);
     mask = ones(T, 1);
-    for i = 1:T
-        if length(trial(i, angle).spikes(1, :)) >= L
-            mean_window(i, :) = mean(trial(i, angle).spikes(:, L-window-delay:L-delay)');
+    for m = 1:T
+        if length(trial(m, k).spikes(1, :)) >= L
+            mean_window(m, :) = mean(trial(m, k).spikes(:, L-window-delay:L-delay)');
         else
-            mask(i) = 0;
+            mask(m) = 0;
         end
     end
     
-    k = min(k, sum(mask));
+    k_nn = min(k_nn, sum(mask));
     overlen = false;
-    if k == 0
-        k = 5;
+    if k_nn == 0
+        k_nn = 5;
         overlen = true;
         mask = ones(T, 1);
-        for i = 1:T
-            mean_window(i, :) = mean(trial(i, angle).spikes(:, end-window-delay:end-delay)');
+        for m = 1:T
+            mean_window(m, :) = mean(trial(m, k).spikes(:, end-window-delay:end-delay)');
         end
     end
     
     % Measure k-NN
     distances = ones(T, 1).*1e15;
-    for i = 1:T
-        if mask(i)
-            distances(i) = power(sum(abs(power((mean_test-mean_window(i, :)), coeff))), 1/coeff);
+    for m = 1:T
+        if mask(m)
+            distances(m) = power(sum(abs(power((mean_test-mean_window(m, :)), coeff))), 1/coeff);
         end
     end
     
     % Calculate Weights for Positions
     [V, I] = sort(distances);
-    weights = zeros(k, 1);
-    for i = 1:k
+    weights = zeros(k_nn, 1);
+    for i = 1:k_nn
         weights(i) = 1/(V(i)^coeff_weight + eps);
     end
     
@@ -118,14 +121,14 @@ function [x, y, new_params] = positionEstimator(test_data, model_params)
     x = 0;
     y = 0;
     if overlen
-        for i = 1:k
-            x = x + weights(i)*trial(I(i), angle).handPos(1, end);
-            y = y + weights(i)*trial(I(i), angle).handPos(2, end);
+        for i = 1:k_nn
+            x = x + weights(i)*trial(I(i), k).handPos(1, end);
+            y = y + weights(i)*trial(I(i), k).handPos(2, end);
         end
     else
-         for i = 1:k
-            x = x + weights(i)*trial(I(i), angle).handPos(1, L);
-            y = y + weights(i)*trial(I(i), angle).handPos(2, L);
+         for i = 1:k_nn
+            x = x + weights(i)*trial(I(i), k).handPos(1, L);
+            y = y + weights(i)*trial(I(i), k).handPos(2, L);
          end
     end
     
