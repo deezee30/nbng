@@ -215,7 +215,7 @@ function [modelParameters] = positionEstimatorTraining(training_data)
     train = {}; %train{1} will keep the spike data (that is averaged and times are gone) over angle 1 trials/instances
     [num_trials , num_classes]= size(training_data); %keep size 80,8
     nr_neurons = size(training_data(1,1).spikes,1); %98, this is number of rows in .spike data
-    group_size = 300; %we will average these many milliseconds to only keep neuron information
+    group_size = 320; %we will average these many milliseconds to only keep neuron information
     
     for class = 1:num_classes %for everz class do the following
        spikes = zeros(num_trials, nr_neurons); %a classes dataset will have 100 ...
@@ -248,18 +248,38 @@ function [modelParameters] = positionEstimatorTraining(training_data)
     % In this function X contains two 50 x 98 matrices appended next to
     % each other. So to allow for all the other data we need two (50*4) x
     % 98 matrices
-    combs = [   1,2,3,4; 5,6,7,8;
-                2,3,4,5; 6,7,8,1;
-                3,4,5,6; 7,8,1,2;
-                4,5,6,7; 8,1,2,3    ];
+%     combs = [   1,2,3,4; 5,6,7,8;
+%                 2,3,4,5; 6,7,8,1;
+%                 3,4,5,6; 7,8,1,2;
+%                 4,5,6,7; 8,1,2,3    ];
     
-    for svm_num = 1:4
+    % In this new 7 SVM version which we're testing to see if it decreases
+    % error, we need to basically have splits that go:
+    combs_1 = [ 1,2,3,4; 5,6,7,8 ];
+    combs_2 = [ 1,2; 3,4;
+                5,6; 7,8; ];
+    combs_3 = [ 1;2;
+                3;4;
+                5;6;
+                7;8; ];
+            
+    combs = combs_1;
+    svm_index = 1;
+    for svm_num = 1:7
         % classes now contain the list of classes
-        classes_a = combs(2*svm_num - 1,:)'; %take this pair's first elements
-        classes_b = combs(2*svm_num,:)'; %take this pair's second elements
+        if svm_num == 2
+            combs = combs_2;
+            svm_index = 1;
+        elseif svm_num == 4
+            combs = combs_3;
+            svm_index = 1;
+        end
+        
+        classes_a = combs(2*svm_index - 1,:)'; %take this pair's first elements
+        classes_b = combs(2*svm_index,:)'; %take this pair's second elements
         train_a = [];
         train_b = [];
-        for i = 1:4
+        for i = 1:size(classes_a,1)
             train_a = [ train_a , train{classes_a(i)}' ];
             train_b = [ train_b , train{classes_b(i)}' ];
         end
@@ -268,9 +288,11 @@ function [modelParameters] = positionEstimatorTraining(training_data)
         
         X = [train_a; train_b]; %we should only train on class a and class b instances (80*2 rows and 98 columns because a column is a neuron)
         tic %start counting
-        [model] = svmTrain_nested(X, repelem(0:1, size(training_data,1) * 4)', 20, @linearKernel, 0.01, 500); %train SVM. First input is the predictors. Second is true angles that we write, 20 is penalty that we tuned, linear kernel, 0.001 error tolerance that is default, 10,000 iterations over dataset to train svm
+        [model] = svmTrain_nested(X, repelem(0:1, size(training_data,1) * size(classes_a,1))', 20, @linearKernel, 0.01, 500); %train SVM. First input is the predictors. Second is true angles that we write, 20 is penalty that we tuned, linear kernel, 0.001 error tolerance that is default, 10,000 iterations over dataset to train svm
         times = [times, toc]; %append the time
         models{svm_num} = model; %save the trained SVM to the pair's index in models cell
+        
+        svm_index = svm_index + 1;
     end
     
     modelParameters.model = models; %send it to the test function

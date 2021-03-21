@@ -60,102 +60,44 @@ function [x, y, newParameters] = positionEstimator(past_current_trial, modelPara
     spikes = mean(past_current_trial.spikes(:, 1:group_size), 2);
     num_classes = 8; %:(
     max_time = size(past_current_trial.spikes, 2); %we want to estimate this time
-    
-%     combs = [   1,2,3,4; 5,6,7,8;
-%                 2,3,4,5; 6,7,8,1;
-%                 3,4,5,6; 7,8,1,2;
-%                 4,5,6,7; 8,1,2,3    ];
+
+    % In this new 7 SVM version which we're testing to see if it decreases
+    % error, we need to basically have splits that go:
+%     combs_1 = [ 1,2,3,4; 5,6,7,8 ];           SVM 1
+%     combs_2 = [ 1,2; 3,4;                     SVM 2
+%                 5,6; 7,8; ];                  SVM 3
+%     combs_3 = [ 1;2;                          SVM 4
+%                 3;4;                          SVM 5
+%                 5;6;                          SVM 6
+%                 7;8; ];                       SVM 7
             
     if max_time == 320  %means we don't have a class yet
         
         prediction_vector = zeros(1,nchoosek(num_classes, 2)); %for each test instance (20*8) we wil come up with 28 predictions (as we trained 28 pairwise models). Here we save the decisions of each classifier for the corresponding row's trial
-        preds = zeros(4,1);
-        for svm_num = 1:4
+        preds = zeros(7,1);
+        for svm_num = 1:7
             % classes now contain the list of classes
             pred = svmPredict_nested(modelParameters.model{svm_num},spikes);
             preds(svm_num) = pred;
         end
-        if preds(1) == 0
-            if preds(2) == 0
-                if preds(3) == 0
-                    % 0,0,0,0
-                    if preds(4) == 0
-                        decision = 4;
-                    % 0,0,0,1
-                    else
-                        decision = 3;
-                    end
-                else
-                    % 0,0,1,0
-                    if preds(4) == 0
-                        disp('ERROR');
-                    % 0,0,1,1
-                    else
-                        decision = 2;
-                    end
-                    
-                end
-            else
-                if preds(3) == 0
-                    % 0,1,0,0
-                    if preds(4) == 0
-                        disp('ERROR');
-                    % 0,1,0,1
-                    else
-                        disp('ERROR');
-                    end
-                else
-                    % 0,1,1,0
-                    if preds(4) == 0
-                        disp('ERROR');
-                    % 0,1,1,1
-                    else
-                        decision = 1;
-                    end
-                    
-                end
-            end
-            
+        if  preds(1) == 0 && preds(2) == 0 && preds(4) == 0
+            decision = 1;
+        elseif preds(1) == 0 && preds(2) == 0 && preds(4) == 1
+            decision = 2;
+        elseif preds(1) == 0 && preds(2) == 1 && preds(5) == 0
+            decision = 3;
+        elseif preds(1) == 0 && preds(2) == 1 && preds(5) == 1
+            decision = 4;
+        elseif preds(1) == 1 && preds(3) == 0 && preds(6) == 0
+            decision = 5;
+        elseif preds(1) == 1 && preds(3) == 0 && preds(6) == 1
+            decision = 6;
+        elseif preds(1) == 1 && preds(3) == 1 && preds(7) == 0
+            decision = 7;
+        elseif preds(1) == 1 && preds(3) == 1 && preds(7) == 1
+            decision = 8;
         else
-            if preds(2) == 0
-                if preds(3) == 0
-                    % 1,0,0,0
-                    if preds(4) == 0
-                        decision = 5;
-                    % 1,0,0,1
-                    else
-                        disp('ERROR');
-                    end
-                else
-                    % 1,0,1,0
-                    if preds(4) == 0
-                        disp('ERROR');
-                    % 1,0,1,1
-                    else
-                        disp('ERROR');
-                    end
-                    
-                end
-            else
-                if preds(3) == 0
-                    % 1,1,0,0
-                    if preds(4) == 0
-                        decision = 6;
-                    % 1,1,0,1
-                    else
-                        disp('ERROR');
-                    end
-                else
-                    % 1,1,1,0
-                    if preds(4) == 0
-                        decision = 7;
-                    % 1,1,1,1
-                    else
-                        decision = 8;
-                    end
-                    
-                end
-            end
+            disp('ERROR');
         end
         newParameters.prediction = decision;
     else
