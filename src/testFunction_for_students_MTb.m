@@ -4,70 +4,76 @@
 % the relevant modelParameters, and then calls the function
 % "positionEstimator" to decode the trajectory. 
 
-function RMSE = testFunction_for_students_MTb(training_data, teamName)
+function [RMSE, acc, elapsed] = testFunction_for_students_MTb(training_data, teamName)
 
-% Set random number generator
-rng(2013);
-ix = randperm(length(training_data));
+    % Record elapsed time
+    t0 = tic;
 
-addpath(teamName);
+    % Set random number generator
+    rng(2013);
+    ix = randperm(length(training_data));
 
-% Select training and testing data (you can choose to split your data in a different way if you wish)
-trainingData = training_data(ix(1:50),:);
-testData = training_data(ix(51:end),:);
+    addpath(teamName);
 
-fprintf('Testing the continuous position estimator... ')
+    % Select training and testing data (you can choose to split your data in a different way if you wish)
+    trainingData = training_data(ix(1:50),:);
+    testData = training_data(ix(51:end),:);
 
-meanSqError = 0;
-n_predictions = 0;  
+    fprintf('Testing the continuous position estimator... ')
 
-figure
-hold on
-axis square
-grid
+    meanSqError = 0;
+    n_predictions = 0;  
+    true_predictions = 0;
 
-% Train Model
-modelParameters = positionEstimatorTraining(trainingData);
+    figure
+    hold on
+    axis square
+    grid
 
-for tr=1:size(testData,1)
-    display(['Decoding block ',num2str(tr),' out of ',num2str(size(testData,1))]);
-    pause(0.001)
-    for direc=randperm(8) 
-        decodedHandPos = [];
+    % Train Model
+    modelParameters = positionEstimatorTraining(trainingData);
 
-        times=320:20:size(testData(tr,direc).spikes,2);
-        
-        for t=times
-            past_current_trial.trialId = testData(tr,direc).trialId;
-            past_current_trial.spikes = testData(tr,direc).spikes(:,1:t); 
-            past_current_trial.decodedHandPos = decodedHandPos;
+    for tr=1:size(testData,1)
+        display(['Decoding block ',num2str(tr),' out of ',num2str(size(testData,1))]);
+        pause(0.001)
+        for direc=randperm(8) 
+            decodedHandPos = [];
 
-            past_current_trial.startHandPos = testData(tr,direc).handPos(1:2,1); 
-            
-            if nargout('positionEstimator') == 3
-                [decodedPosX, decodedPosY, newParameters] = positionEstimator(past_current_trial, modelParameters);
-                modelParameters = newParameters;
-            elseif nargout('positionEstimator') == 2
-                [decodedPosX, decodedPosY] = positionEstimator(past_current_trial, modelParameters);
+            times=320:20:size(testData(tr,direc).spikes,2);
+
+            for t=times
+                past_current_trial.trialId = testData(tr,direc).trialId;
+                past_current_trial.spikes = testData(tr,direc).spikes(:,1:t); 
+                past_current_trial.decodedHandPos = decodedHandPos;
+
+                past_current_trial.startHandPos = testData(tr,direc).handPos(1:2,1); 
+
+                if nargout('positionEstimator') == 3
+                    [decodedPosX, decodedPosY, newParameters] = positionEstimator(past_current_trial, modelParameters);
+                    modelParameters = newParameters;
+                elseif nargout('positionEstimator') == 2
+                    [decodedPosX, decodedPosY] = positionEstimator(past_current_trial, modelParameters);
+                end
+
+                decodedPos = [decodedPosX; decodedPosY];
+                decodedHandPos = [decodedHandPos decodedPos];
+
+                meanSqError = meanSqError + norm(testData(tr,direc).handPos(1:2,t) - decodedPos)^2;
+
             end
-            
-            decodedPos = [decodedPosX; decodedPosY];
-            decodedHandPos = [decodedHandPos decodedPos];
-            
-            meanSqError = meanSqError + norm(testData(tr,direc).handPos(1:2,t) - decodedPos)^2;
-            
+            n_predictions = n_predictions+length(times);
+            hold on
+            plot(decodedHandPos(1,:),decodedHandPos(2,:), 'r');
+            plot(testData(tr,direc).handPos(1,times),testData(tr,direc).handPos(2,times),'b')
         end
-        n_predictions = n_predictions+length(times);
-        hold on
-        plot(decodedHandPos(1,:),decodedHandPos(2,:), 'r');
-        plot(testData(tr,direc).handPos(1,times),testData(tr,direc).handPos(2,times),'b')
     end
-end
 
-legend('Decoded Position', 'Actual Position')
+    legend('Decoded Position', 'Actual Position')
 
-RMSE = sqrt(meanSqError/n_predictions) 
+    RMSE = sqrt(meanSqError/n_predictions);
+    acc = true_predictions / n_predictions;
+    elapsed = toc(t0);
 
-rmpath(genpath(teamName))
+    rmpath(genpath(teamName))
 
 end
