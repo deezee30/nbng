@@ -64,26 +64,27 @@ function [x, y, new_params] = positionEstimator(test_data, model_params)
             num_nn(ceil(I(i)/T)) = num_nn(ceil(I(i)/T)) + 1;
         end
         
+        % obtain label by maximising NN
         [~, new_params.angle] = max(num_nn);
     else
         new_params.angle = model_params.angle;
     end
 
-    window = 20;
+    dt = 20;
     delay = 0;
     coeff_weight = 5;
     k_nn = 33; % Number of nearest neighbours
     coeff = 2;
     eps = 1e-35;
-    mean_test = mean(test_data.spikes(:, L-window-delay:L-delay)');
+    mean_test = mean(test_data.spikes(:, L-dt-delay:L-delay)');
     k = new_params.angle;
 
-    % Create Firing rate of specific Window and Delay
-    mean_window = zeros(T, N);
+    % Create Firing rate of specific dt and Delay
+    mean_dt = zeros(T, N);
     mask = ones(T, 1);
     for m = 1:T
         if length(trial(m, k).spikes(1, :)) >= L
-            mean_window(m, :) = mean(trial(m, k).spikes(:, L-window-delay:L-delay)');
+            mean_dt(m, :) = mean(trial(m, k).spikes(:, L-dt-delay:L-delay)');
         else
             mask(m) = 0;
         end
@@ -96,7 +97,7 @@ function [x, y, new_params] = positionEstimator(test_data, model_params)
         overlen = true;
         mask = ones(T, 1);
         for m = 1:T
-            mean_window(m, :) = mean(trial(m, k).spikes(:, end-window-delay:end-delay)');
+            mean_dt(m, :) = mean(trial(m, k).spikes(:, end-dt-delay:end-delay)');
         end
     end
     
@@ -104,7 +105,7 @@ function [x, y, new_params] = positionEstimator(test_data, model_params)
     distances = ones(T, 1).*1e15;
     for m = 1:T
         if mask(m)
-            distances(m) = power(sum(abs(power((mean_test-mean_window(m, :)), coeff))), 1/coeff);
+            distances(m) = power(sum(abs(power((mean_test-mean_dt(m, :)), coeff))), 1/coeff);
         end
     end
     
