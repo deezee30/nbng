@@ -1,5 +1,6 @@
 %%% Team Members: Faillace, Elena; Lazzaroli, Chiara; Lawrence, Kai; Zerkalijs, Deniss
 function model_params = positionEstimatorTraining(training_data)
+
     % Arguments:
 
     % - training_data:
@@ -15,19 +16,18 @@ function model_params = positionEstimatorTraining(training_data)
     % - model_params:
     %     single structure containing all the learned parameters of your
     %     model and which can be used by the "positionEstimator" function.
-  
-    num_trials = size(training_data, 1);              % Number of recorded trials
-    num_classes   = size(training_data, 2);              % Number of recorded trajectories
+    
+    [T, C] = size(training_data); % Shape = (no. of recorded trials x number of distinct trajectories)
 
     % find average trajectory for each angle
     trajectories = {};
-    for ang = 1:num_classes   
+    for k = 1:C   
 
         % make the handPos trajectories all the same length and find average
-        traj = training_data(1,ang).handPos;
-        division_count = zeros(1,1500);
-        for trial = 2:num_trials
-            current_traj = training_data(trial,ang).handPos;  
+        traj = training_data(1, k).handPos;
+        division_count = zeros(1, 1000);
+        for trial = 2:T
+            current_traj = training_data(trial, k).handPos;  
 
             for i = 1:length(current_traj)
                 division_count(i) = division_count(i) + 1;
@@ -45,7 +45,7 @@ function model_params = positionEstimatorTraining(training_data)
         end
 
         for j = 1:length(traj)
-            traj(:,j) = traj(:,j) / division_count(j);
+            traj(:, j) = traj(:, j) / division_count(j);
         end
         trajectories = [trajectories, traj];
 

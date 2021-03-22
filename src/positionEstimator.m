@@ -41,8 +41,8 @@ function [x, y, new_params] = positionEstimator(test_data, model_params)
         coeff = 1;
         k_nn = 52; % Nearest neighbours
         mean_320 = zeros(K, N, T);
-        for k = 1:K
-            for m = 1:T
+        for k = 1:K % For each trajectory
+            for m = 1:T % For each trial
                 mean_320(k, :, m) = mean(trial(m, k).spikes(:, 1:320), 2);
             end
         end
@@ -54,12 +54,12 @@ function [x, y, new_params] = positionEstimator(test_data, model_params)
             end
         end
         
-        [n_classes, T] = size(distances);
+        [C, T] = size(distances);
         % sort the distance list in ascending order
-        [~, I] = sort(reshape(distances', [n_classes * T, 1]));
+        [~, I] = sort(reshape(distances', [C * T, 1]));
         
         % populate with the first k_nn distances
-        num_nn = zeros(n_classes, 1);
+        num_nn = zeros(C, 1);
         for i = 1:k_nn
             num_nn(ceil(I(i)/T)) = num_nn(ceil(I(i)/T)) + 1;
         end
@@ -79,10 +79,9 @@ function [x, y, new_params] = positionEstimator(test_data, model_params)
     mean_test = mean(test_data.spikes(:, L-dt-delay:L-delay), 2)';
     k = new_params.angle;
 
-    % Create Firing rate of specific dt and Delay
     mean_dt = zeros(T, N);
     mask = ones(T, 1);
-    for m = 1:T
+    for m = 1:T % For each trial
         if length(trial(m, k).spikes(1, :)) >= L
             mean_dt(m, :) = mean(trial(m, k).spikes(:, L-dt-delay:L-delay), 2)';
         else
@@ -99,25 +98,25 @@ function [x, y, new_params] = positionEstimator(test_data, model_params)
         end
     end
     
-    % Measure k-NN
+    % Determine distance KNN
     distances = ones(T, 1).*1e15;
-    for m = 1:T
+    for m = 1:T % For each trial
         if mask(m)
             distances(m) = power(sum(abs(power((mean_test-mean_dt(m, :)), coeff))), 1/coeff);
         end
     end
     
-    % Calculate Weights for Positions
+    % Determine distance weights for each position
     [V, ~] = sort(distances);
     weights = zeros(k_nn, 1);
     for i = 1:k_nn
         weights(i) = 1/(V(i)^coeff_weight + eps);
     end
         
-    %now we know that this test instance is an angle of decision
+    % Now we know that this test instance is an angle of decision
     xs = [];
     ys = [];
-    for train_trial = 1:size(model_params.trial, 1) %
+    for train_trial = 1:size(model_params.trial, 1)
         position_trial = model_params.trial(train_trial, new_params.angle).handPos(1:2, :);
 
         if size(position_trial, 2) >= L && norm(model_params.trial(train_trial, new_params.angle).handPos(1:2, 1) - test_data.startHandPos(1:2, 1)) <= 7
@@ -128,7 +127,7 @@ function [x, y, new_params] = positionEstimator(test_data, model_params)
     
     if size(xs, 2) == 0
         avg_traj = cell2mat(new_params.avg_traj(new_params.angle));
-        if L < size(avg_traj,2)
+        if L < size(avg_traj, 2)
             x = avg_traj(1, L);
             y = avg_traj(2, L);
         else
