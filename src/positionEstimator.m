@@ -26,25 +26,24 @@ function [x, y, new_params] = positionEstimator(test_data, model_params)
     %             test_data.decodedHandPos = [2.3; 1.5]
     %             test_data.spikes = 98x340 matrix of spiking activity
     
-    new_params.trial = model_params.trial; % Copy model params to new params
-    trial = new_params.trial; % Extract trial
-    new_params.avg_traj = model_params.avg_traj;
-    [T, K] = size(trial); % Shape = (no. of trials  x no. of discrete trajectories)
-    [N, L] = size(test_data.spikes); % Shape = (no. of neurons x no. of time points)
-    pred_t0 = tic; % Record prediction block timing
+    new_params.trial    = model_params.trial;       % Copy model params to new params
+    new_params.avg_traj = model_params.avg_traj;    % Copy avg. trajectories to new params
+    trial               = new_params.trial;         % Extract trial
+    [T, K]              = size(trial);              % Shape = (no. of trials  x no. of discrete trajectories)
+    [N, L]              = size(test_data.spikes);   % Shape = (no. of neurons x no. of time points)
+    pred_t0             = tic;                      % Record prediction block timing
 
     % If first iteration use the predictor to calculate the label
     if L == 320
-        mean_test = mean(test_data.spikes');
+        mean_test = mean(test_data.spikes, 2)';
         
         % Classification of k, preset of firing rates if it's the first one
-        % Best Hyperparameters: k=50, coeff=1
         coeff = 1;
         k_nn = 52; % Nearest neighbours
         mean_320 = zeros(K, N, T);
         for k = 1:K
             for m = 1:T
-                mean_320(k, :, m) = mean(trial(m, k).spikes(:, 1:320)')';
+                mean_320(k, :, m) = mean(trial(m, k).spikes(:, 1:320), 2);
             end
         end
         
@@ -72,12 +71,12 @@ function [x, y, new_params] = positionEstimator(test_data, model_params)
     end
 
     dt = 20;
-    delay = 0;
+    delay = 20;
     coeff_weight = 5;
     k_nn = 33; % Number of nearest neighbours
     coeff = 2;
     eps = 1e-35;
-    mean_test = mean(test_data.spikes(:, L-dt-delay:L-delay)');
+    mean_test = mean(test_data.spikes(:, L-dt-delay:L-delay), 2)';
     k = new_params.angle;
 
     % Create Firing rate of specific dt and Delay
@@ -85,20 +84,18 @@ function [x, y, new_params] = positionEstimator(test_data, model_params)
     mask = ones(T, 1);
     for m = 1:T
         if length(trial(m, k).spikes(1, :)) >= L
-            mean_dt(m, :) = mean(trial(m, k).spikes(:, L-dt-delay:L-delay)');
+            mean_dt(m, :) = mean(trial(m, k).spikes(:, L-dt-delay:L-delay), 2)';
         else
             mask(m) = 0;
         end
     end
     
     k_nn = min(k_nn, sum(mask));
-    overlen = false;
     if k_nn == 0
         k_nn = 5;
-        overlen = true;
         mask = ones(T, 1);
         for m = 1:T
-            mean_dt(m, :) = mean(trial(m, k).spikes(:, end-dt-delay:end-delay)');
+            mean_dt(m, :) = mean(trial(m, k).spikes(:, end-dt-delay:end-delay), 2)';
         end
     end
     
@@ -111,44 +108,25 @@ function [x, y, new_params] = positionEstimator(test_data, model_params)
     end
     
     % Calculate Weights for Positions
-    [V, I] = sort(distances);
+    [V, ~] = sort(distances);
     weights = zeros(k_nn, 1);
     for i = 1:k_nn
         weights(i) = 1/(V(i)^coeff_weight + eps);
     end
-    
-    weights = weights./sum(weights);
-    
-    %{
-    % Calculate weighted Position
-    x = 0;
-    y = 0;
-    if overlen
-        for i = 1:k_nn
-            x = x + weights(i)*trial(I(i), k).handPos(1, end);
-            y = y + weights(i)*trial(I(i), k).handPos(2, end);
-        end
-    else
-         for i = 1:k_nn
-            x = x + weights(i)*trial(I(i), k).handPos(1, L);
-            y = y + weights(i)*trial(I(i), k).handPos(2, L);
-         end
-    end
-    %}
-    
+        
     %now we know that this test instance is an angle of decision
     xs = [];
     ys = [];
     for train_trial = 1:size(model_params.trial, 1) %
         position_trial = model_params.trial(train_trial, new_params.angle).handPos(1:2, :);
 
-        if (size(position_trial, 2) >= L) && norm(model_params.trial(train_trial, new_params.angle).handPos(1:2,1) - test_data.startHandPos(1:2,1)) <= 5
+        if size(position_trial, 2) >= L && norm(model_params.trial(train_trial, new_params.angle).handPos(1:2, 1) - test_data.startHandPos(1:2, 1)) <= 7
            xs = [xs, position_trial(1, L)];
            ys = [ys, position_trial(2, L)];
         end
     end
     
-    if size(xs,2) == 0
+    if size(xs, 2) == 0
         avg_traj = cell2mat(new_params.avg_traj(new_params.angle));
         if L < size(avg_traj,2)
             x = avg_traj(1, L);
