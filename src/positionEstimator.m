@@ -26,11 +26,12 @@ function [x, y, new_params] = positionEstimator(test_data, model_params)
     %             test_data.decodedHandPos = [2.3; 1.5]
     %             test_data.spikes = 98x340 matrix of spiking activity
     
-    new_params.trial    = model_params.trial;       % Copy model params to new params
-    trial               = new_params.trial;         % Extract trial
-    [T, K]              = size(trial);              % Shape = (no. of trials  x no. of discrete trajectories)
-    [N, L]              = size(test_data.spikes);   % Shape = (no. of neurons x no. of time points)
-    pred_t0             = tic;                      % Record prediction block timing
+    new_params.trial = model_params.trial; % Copy model params to new params
+    trial = new_params.trial; % Extract trial
+    new_params.avg_traj = model_params.avg_traj;
+    [T, K] = size(trial); % Shape = (no. of trials  x no. of discrete trajectories)
+    [N, L] = size(test_data.spikes); % Shape = (no. of neurons x no. of time points)
+    pred_t0 = tic; % Record prediction block timing
 
     % If first iteration use the predictor to calculate the label
     if L == 320
@@ -117,6 +118,7 @@ function [x, y, new_params] = positionEstimator(test_data, model_params)
     
     weights = weights./sum(weights);
     
+    %{
     % Calculate weighted Position
     x = 0;
     y = 0;
@@ -130,6 +132,33 @@ function [x, y, new_params] = positionEstimator(test_data, model_params)
             x = x + weights(i)*trial(I(i), k).handPos(1, L);
             y = y + weights(i)*trial(I(i), k).handPos(2, L);
          end
+    end
+    %}
+    
+    %now we know that this test instance is an angle of decision
+    xs = [];
+    ys = [];
+    for train_trial = 1:size(model_params.trial, 1) %
+        position_trial = model_params.trial(train_trial, new_params.angle).handPos(1:2, :);
+
+        if (size(position_trial, 2) >= L) && norm(model_params.trial(train_trial, new_params.angle).handPos(1:2,1) - test_data.startHandPos(1:2,1)) <= 5
+           xs = [xs, position_trial(1, L)];
+           ys = [ys, position_trial(2, L)];
+        end
+    end
+    
+    if size(xs,2) == 0
+        avg_traj = cell2mat(new_params.avg_traj(new_params.angle));
+        if L < size(avg_traj,2)
+            x = avg_traj(1, L);
+            y = avg_traj(2, L);
+        else
+            x = avg_traj(1, end);
+            y = avg_traj(2, end);
+        end
+    else
+       x = mean(xs);
+       y = mean(ys);
     end
     
     % Save time
