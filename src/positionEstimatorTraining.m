@@ -21,7 +21,7 @@ function model_params = positionEstimatorTraining(training_data)
 
     % find average trajectory for each angle
     trajectories = {};
-    for k = 1:C   
+    for k = 1:C
 
         % make the handPos trajectories all the same length and find average
         traj = training_data(1, k).handPos;
@@ -31,7 +31,6 @@ function model_params = positionEstimatorTraining(training_data)
 
             for i = 1:length(current_traj)
                 division_count(i) = division_count(i) + 1;
-
             end
 
             if length(current_traj) < length(traj)
@@ -44,14 +43,17 @@ function model_params = positionEstimatorTraining(training_data)
 
         end
 
+        % normalise
         for j = 1:length(traj)
             traj(:, j) = traj(:, j) / division_count(j);
         end
+        
         trajectories = [trajectories, traj];
-
     end
 
-    model_params.trial = training_data;
-    model_params.angle = -1;
-    model_params.avg_traj = trajectories;
+    % set up parameters for prediction
+    model_params.trial      = training_data;    % Trial data set
+    model_params.avg_traj   = trajectories;     % Average trajectories
+    model_params.k_nn       = 28;               % Number of k-nearest neighbours hyperparameter
+    model_params.C_coeff    = 1;                % Distance coefficient for weighted k-nn algorithm
 end

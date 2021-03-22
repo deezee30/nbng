@@ -26,31 +26,33 @@ function [x, y, new_params] = positionEstimator(test_data, model_params)
     %             test_data.decodedHandPos = [2.3; 1.5]
     %             test_data.spikes = 98x340 matrix of spiking activity
     
-    new_params.trial    = model_params.trial;       % Copy model params to new params
-    new_params.avg_traj = model_params.avg_traj;    % Copy avg. trajectories to new params
+    new_params.trial    = model_params.trial;       % Trial data set
+    new_params.avg_traj = model_params.avg_traj;    % Average path for each trajectory
+    new_params.k_nn     = model_params.k_nn;        % Number of k-nearest neighbours hyperparameter
+    new_params.C_coeff  = model_params.C_coeff;     % Distance coefficient for weighted k-nn algorithm
     trial               = new_params.trial;         % Extract trial
+    k_nn                = new_params.k_nn;          % Extract k_nn
+    C_coeff             = new_params.C_coeff;       % Extract C_coeff
     [T, K]              = size(trial);              % Shape = (no. of trials  x no. of discrete trajectories)
     [N, L]              = size(test_data.spikes);   % Shape = (no. of neurons x no. of time points)
     pred_t0             = tic;                      % Record prediction block timing
-
+    
     % If first iteration use the predictor to calculate the label
     if L == 320
         mean_test = mean(test_data.spikes, 2)';
         
-        % Classification of k, preset of firing rates if it's the first one
-        coeff = 1;
-        k_nn = 52; % Nearest neighbours
-        mean_320 = zeros(K, N, T);
+        % Classification of trajectory k, preset of firing rates if it's the first one
+        mean_first = zeros(K, N, T);
         for k = 1:K % For each trajectory
             for m = 1:T % For each trial
-                mean_320(k, :, m) = mean(trial(m, k).spikes(:, 1:320), 2);
+                mean_first(k, :, m) = mean(trial(m, k).spikes(:, 1:320), 2);
             end
         end
         
         distances = zeros(K, T);
         for k = 1:K % For each trajectory
             for m = 1:T % For each trial
-                distances(k, m) = power(sum(abs(power((mean_test-mean_320(k, :, m)), coeff))), 1/coeff);
+                distances(k, m) = power(sum(abs(power((mean_test-mean_first(k, :, m)), C_coeff))), 1/C_coeff);
             end
         end
         
@@ -60,7 +62,7 @@ function [x, y, new_params] = positionEstimator(test_data, model_params)
         
         % populate with the first k_nn distances
         num_nn = zeros(C, 1);
-        for i = 1:k_nn
+        for i = 1:k_nn % For each neighbour
             num_nn(ceil(I(i)/T)) = num_nn(ceil(I(i)/T)) + 1;
         end
         
@@ -69,55 +71,12 @@ function [x, y, new_params] = positionEstimator(test_data, model_params)
     else
         new_params.angle = model_params.angle;
     end
-
-    dt = 20;
-    delay = 20;
-    coeff_weight = 5;
-    k_nn = 33; % Number of nearest neighbours
-    coeff = 2;
-    eps = 1e-35;
-    mean_test = mean(test_data.spikes(:, L-dt-delay:L-delay), 2)';
-    k = new_params.angle;
-
-    mean_dt = zeros(T, N);
-    mask = ones(T, 1);
-    for m = 1:T % For each trial
-        if length(trial(m, k).spikes(1, :)) >= L
-            mean_dt(m, :) = mean(trial(m, k).spikes(:, L-dt-delay:L-delay), 2)';
-        else
-            mask(m) = 0;
-        end
-    end
-    
-    k_nn = min(k_nn, sum(mask));
-    if k_nn == 0
-        k_nn = 5;
-        mask = ones(T, 1);
-        for m = 1:T
-            mean_dt(m, :) = mean(trial(m, k).spikes(:, end-dt-delay:end-delay), 2)';
-        end
-    end
-    
-    % Determine distance KNN
-    distances = ones(T, 1).*1e15;
-    for m = 1:T % For each trial
-        if mask(m)
-            distances(m) = power(sum(abs(power((mean_test-mean_dt(m, :)), coeff))), 1/coeff);
-        end
-    end
-    
-    % Determine distance weights for each position
-    [V, ~] = sort(distances);
-    weights = zeros(k_nn, 1);
-    for i = 1:k_nn
-        weights(i) = 1/(V(i)^coeff_weight + eps);
-    end
         
     % Now we know that this test instance is an angle of decision
     xs = [];
     ys = [];
-    for train_trial = 1:size(model_params.trial, 1)
-        position_trial = model_params.trial(train_trial, new_params.angle).handPos(1:2, :);
+    for train_trial = 1:size(trial, 1)
+        position_trial = trial(train_trial, new_params.angle).handPos(1:2, :);
 
         if size(position_trial, 2) >= L && norm(model_params.trial(train_trial, new_params.angle).handPos(1:2, 1) - test_data.startHandPos(1:2, 1)) <= 7
            xs = [xs, position_trial(1, L)];
