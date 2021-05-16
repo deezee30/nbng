@@ -13,8 +13,8 @@ ix = randperm(length(training_data));
 addpath(teamName);
 
 % Select training and testing data (you can choose to split your data in a different way if you wish)
-trainingData = training_data(ix(1:50),:);
-testData = training_data(ix(51:end),:);
+trainingData = training_data(ix(1:80),:);
+testData = training_data(ix(81:end),:);
 
 fprintf('Testing the continuous position estimator... ')
 
