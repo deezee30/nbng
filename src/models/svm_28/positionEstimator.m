@@ -15,94 +15,19 @@ function [x, y, newParameters] = positionEstimator(past_current_trial, modelPara
     if max_time == 320  %means we don't have a class yet
         
         prediction_vector = zeros(1,nchoosek(num_classes, 2)); %for each test instance (20*8) we wil come up with 28 predictions (as we trained 28 pairwise models). Here we save the decisions of each classifier for the corresponding row's trial
-        preds = zeros(4,1);
-        for svm_num = 1:4
-            % classes now contain the list of classes
-            pred = svmPredict_nested(modelParameters.model{svm_num},spikes);
-            preds(svm_num) = pred;
-        end
-        if preds(1) == 0
-            if preds(2) == 0
-                if preds(3) == 0
-                    % 0,0,0,0
-                    if preds(4) == 0
-                        decision = 4;
-                    % 0,0,0,1
-                    else
-                        decision = 3;
-                    end
-                else
-                    % 0,0,1,0
-                    if preds(4) == 0
-                        disp('ERROR');
-                    % 0,0,1,1
-                    else
-                        decision = 2;
-                    end
-                    
-                end
+        for pair =1:size(combs,1) %back to the combs (which was saving all pairs of 1 to 8)
+            class_a = combs(pair, 1); %take first element of combination
+            class_b = combs(pair, 2); %take second ...
+            pred = svmPredict_nested(modelParameters.model{class_a,class_b}, spikes); %now bring the model of a vs. b, and predict all the instances by using this
+            if pred == 0 %if pred is 0 it means this is class a
+                pred = class_a;
             else
-                if preds(3) == 0
-                    % 0,1,0,0
-                    if preds(4) == 0
-                        disp('ERROR');
-                    % 0,1,0,1
-                    else
-                        disp('ERROR');
-                    end
-                else
-                    % 0,1,1,0
-                    if preds(4) == 0
-                        disp('ERROR');
-                    % 0,1,1,1
-                    else
-                        decision = 1;
-                    end
-                    
-                end
+                pred = class_b;
             end
-            
-        else
-            if preds(2) == 0
-                if preds(3) == 0
-                    % 1,0,0,0
-                    if preds(4) == 0
-                        decision = 5;
-                    % 1,0,0,1
-                    else
-                        disp('ERROR');
-                    end
-                else
-                    % 1,0,1,0
-                    if preds(4) == 0
-                        disp('ERROR');
-                    % 1,0,1,1
-                    else
-                        disp('ERROR');
-                    end
-                    
-                end
-            else
-                if preds(3) == 0
-                    % 1,1,0,0
-                    if preds(4) == 0
-                        decision = 6;
-                    % 1,1,0,1
-                    else
-                        disp('ERROR');
-                    end
-                else
-                    % 1,1,1,0
-                    if preds(4) == 0
-                        decision = 7;
-                    % 1,1,1,1
-                    else
-                        decision = 8;
-                    end
-                    
-                end
-            end
+            prediction_vector(pair) = pred; %the next column vas 'el', so save all this prediction vector as the next column of prediction_vector, so for each of the 160 test instance we have the result of a new a versus b classifier
         end
+
+        decision = mode(prediction_vector); %take mode of every row, as a row is a test trial, and there are 28 votes, so mode is the maximally voted class and we can take it
         newParameters.prediction = decision;
     else
         decision = modelParameters.prediction;
@@ -116,7 +41,7 @@ function [x, y, newParameters] = positionEstimator(past_current_trial, modelPara
     ys = [];
     for train_trial = 1:size(modelParameters.olddata, 1) %
         position_trial = modelParameters.olddata(train_trial, decision).handPos(1:2, :);
-        if (size(position_trial, 2) >= max_time) && norm(modelParameters.olddata(train_trial, decision).handPos(1:2,1) - past_current_trial.startHandPos(1:2,1)) <= 5 %optimise this 5
+        if (size(position_trial, 2) >= max_time) && norm(modelParameters.olddata(train_trial, decision).handPos(1:2,1) - past_current_trial.startHandPos(1:2,1)) <= 7 %optimise this 5
            xs = [xs, position_trial(1, max_time)];
            ys = [ys, position_trial(2, max_time)];
         end
