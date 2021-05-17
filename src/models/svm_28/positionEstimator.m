@@ -6,7 +6,8 @@ function [x, y, newParameters] = positionEstimator(past_current_trial, modelPara
     spikes = mean(past_current_trial.spikes(:, 1:group_size), 2);
     num_classes = 8; %:(
     max_time = size(past_current_trial.spikes, 2); %we want to estimate this time
-    
+    combs = nchoosek(1:num_classes,2); %gives every possible 2-combination of angles 1 to 8 (There are 28 many)
+
 %     combs = [   1,2,3,4; 5,6,7,8;
 %                 2,3,4,5; 6,7,8,1;
 %                 3,4,5,6; 7,8,1,2;
