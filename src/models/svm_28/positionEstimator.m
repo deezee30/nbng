@@ -1,5 +1,6 @@
 function [x, y, newParameters] = positionEstimator(past_current_trial, modelParameters)
 
+    
     %first let us find the angle by using the trained model
     newParameters = modelParameters; %update later
     group_size = 300; %how many ms of spikes to look
@@ -7,11 +8,6 @@ function [x, y, newParameters] = positionEstimator(past_current_trial, modelPara
     num_classes = 8; %:(
     max_time = size(past_current_trial.spikes, 2); %we want to estimate this time
     combs = nchoosek(1:num_classes,2); %gives every possible 2-combination of angles 1 to 8 (There are 28 many)
-
-%     combs = [   1,2,3,4; 5,6,7,8;
-%                 2,3,4,5; 6,7,8,1;
-%                 3,4,5,6; 7,8,1,2;
-%                 4,5,6,7; 8,1,2,3    ];
             
     if max_time == 320  %means we don't have a class yet
         
