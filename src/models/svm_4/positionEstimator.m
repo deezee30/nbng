@@ -98,7 +98,11 @@ function [x, y, newParameters] = positionEstimator(past_current_trial, modelPara
                     end
                 else
                     % 0,0,1,0
+                    % 2 OR 4
                     if preds(4) == 0
+                        r = randi([1, 2], 1);
+                        options = [2, 4];
+                        decision = options(r);
                         disp('ERROR');
                     % 0,0,1,1
                     else
@@ -109,15 +113,27 @@ function [x, y, newParameters] = positionEstimator(past_current_trial, modelPara
             else
                 if preds(3) == 0
                     % 0,1,0,0
-                    if preds(4) == 0
+                    % 4 OR 6
+                    if preds(4) == 0                        
+                        r = randi([1, 2], 1);
+                        options = [4, 6];
+                        decision = options(r);
                         disp('ERROR');
                     % 0,1,0,1
+                    % 1 OR 3
                     else
+                        r = randi([1, 2], 1);
+                        options = [1, 3];
+                        decision = options(r);
                         disp('ERROR');
                     end
                 else
                     % 0,1,1,0
+                    % 1 OR 7
                     if preds(4) == 0
+                        r = randi([1, 2], 1);
+                        options = [1, 7];
+                        decision = options(r);
                         disp('ERROR');
                     % 0,1,1,1
                     else
@@ -133,15 +149,27 @@ function [x, y, newParameters] = positionEstimator(past_current_trial, modelPara
                     if preds(4) == 0
                         decision = 5;
                     % 1,0,0,1
+                    % 3 OR 5
                     else
+                        r = randi([1, 2], 1);
+                        options = [3, 5];
+                        decision = options(r);
                         disp('ERROR');
                     end
                 else
                     % 1,0,1,0
-                    if preds(4) == 0
+                    % 5 OR 7
+                    if preds(4) == 0                        
+                        r = randi([1, 2], 1);
+                        options = [5, 7];
+                        decision = options(r);
                         disp('ERROR');
                     % 1,0,1,1
+                    % 2 OR 8
                     else
+                        r = randi([1, 2], 1);
+                        options = [2, 8];
+                        decision = options(r);
                         disp('ERROR');
                     end
 
@@ -152,7 +180,11 @@ function [x, y, newParameters] = positionEstimator(past_current_trial, modelPara
                     if preds(4) == 0
                         decision = 6;
                     % 1,1,0,1
+                    % 6 or 8
                     else
+                        r = randi([1, 2], 1);
+                        options = [6, 8];
+                        decision = options(r);
                         disp('ERROR');
                     end
                 else
