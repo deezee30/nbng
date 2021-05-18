@@ -30,22 +30,12 @@ for i = 1:22
     new_row(1, i) = cell_avg/cell_count;
 end
 
-% 
-% old_new_column = [ mean(RMSE_log, 2) ; NaN];
-% old_new_row = mean(RMSE_log);
-
-% disp(size(RMSE_log))
-% disp(new_row)
-% disp(old_new_row)
-% disp(new_column)
-% disp(old_new_column)
 new_column = [new_column ; NaN];
 RMSE_log = [RMSE_log; new_row];
 RMSE_log = [RMSE_log, new_column];
 figure(1)
 h = heatmap(xvalues, yvalues, RMSE_log);
 colormap cool
-% h = heatmap(RMSE_log);
 
 h.XLabel = 'Random Seed';
 h.YLabel = 'Training/Testing Data Size';
@@ -57,8 +47,6 @@ x = categorical({'10/90', '20/80', '30/70', '40/60', '50/50', '60/40', '70/30', 
 x = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18];
 
 avgs = new_column(1:end - 1)';
-
-% plot(x,avgs)
 std_dev = zeros(1,18);
 
 meta_stat = [25, 27, 29, 31, 33, 35, 37, 39];
@@ -66,18 +54,13 @@ meta_stat = [25, 27, 29, 31, 33, 35, 37, 39];
 for i = 1:18
     considered_array = zeros(22,1);
     for j = 1:22
+    %   Remove infinities
         if RMSE_log(i,j) < 50
             considered_array(j) = RMSE_log(i,j);
-%             considered_array = [considered_array RMSE_log(i,j)];
-%         else
-%             r = randsample([1,2,3,4,5,6,7,8], 1);
-%             decision = meta_stat(r);
-%             considered_array = [considered_array , decision];
         end
     end
     
     std_dev(1,i) = std(nonzeros(considered_array));
-%     std_dev(1,i) = std(RMSE_log(i,:));
 end
 plot(x,avgs,'color', [84/256, 214/256, 201/256], 'LineWidth',1.5)
 patch([x fliplr(x)], [avgs - std_dev fliplr(avgs + std_dev)], [84/256 214/256 201/256], 'LineStyle', 'none');
@@ -109,9 +92,10 @@ patch([x fliplr(x)], [avgs - std_dev fliplr(avgs + std_dev)], [84/256 214/256 20
 % er = errorbar(x,new_column(1:end-1),err_low,err_high);    
 % er.Color = [0 0 0];                            
 % er.LineStyle = 'none';
+
+
 xlabel('Training/Test Dataset Size', 'Fontsize', 14)
 ylabel('RMSE', 'Fontsize', 14)
-xticklabels({'10/90','15/85', '20/80', '25/75', '30/70', '35/65', '40/60', '45/55', '50/50', '55/45', '60/40', '65/35', '70/30', '75/25', '80/20', '85,15', '90/10', '95/15'})
 xticks([1 3 5 7 9 11 13 15 17])
 xticklabels({'10/90', '20/80', '30/70', '40/60', '50/50', '60/40', '70/30', '80/20', '90/10'})
 
@@ -154,14 +138,14 @@ for i = 1:18
     
     std_dev(1,i) = std(nonzeros(considered_array));
 end
-% plot(x,avgs, 'color', [181/256 102/256 255/256],'LineWidth',1.5)
-% patch([x fliplr(x)], [avgs - std_dev fliplr(avgs + std_dev)], [181/256 102/256 255/256], 'LineStyle', 'none');
+plot(x,avgs, 'color', [181/256 102/256 255/256],'LineWidth',1.5)
+patch([x fliplr(x)], [avgs - std_dev fliplr(avgs + std_dev)], [181/256 102/256 255/256], 'LineStyle', 'none');
 xlabel('Training/Test Dataset Size', 'Fontsize', 14)
 ylabel('RMSE', 'Fontsize', 14)
 xticklabels({'10/90','15/85', '20/80', '25/75', '30/70', '35/65', '40/60', '45/55', '50/50', '55/45', '60/40', '65/35', '70/30', '75/25', '80/20', '85,15', '90/10', '95/15'})
 xticks([1 3 5 7 9 11 13 15 17])
 xticklabels({'10/90', '20/80', '30/70', '40/60', '50/50', '60/40', '70/30', '80/20', '90/10'})
 alpha(0.3)
-title('SVM-4 RMSE across varying sizes of training and test data', 'Fontsize', 18)
+title('SVM RMSE across varying sizes of training and test data', 'Fontsize', 18)
 legend('4 SVM version average', '4 SVM version standard deviation', '28 SVM version average', '28 SVM version standard deviation')
 
