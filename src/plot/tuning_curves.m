@@ -86,8 +86,8 @@ for si_idx = 1:length(sel_idx)
     theta_span_extrap = [0, theta_span, 360];
     rate_extrap = [extrap(2), rate, extrap(2)];
     
-   area(theta_span_extrap, rate_extrap, "facecolor", [0.25, 0.7, 0.6], "facealpha", 0.5, ...
-                                        "edgecolor", [0.25, 0.7, 0.6], "linewidth", 1.5)
+    area(theta_span_extrap, rate_extrap, "facecolor", [0.25, 0.7, 0.6], "facealpha", 0.5, ...
+                                         "edgecolor", [0.25, 0.7, 0.6], "linewidth", 1.5)
 
     xticks(0:180:360)
     xlim([0, 360])

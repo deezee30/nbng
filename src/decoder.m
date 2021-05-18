@@ -3,8 +3,8 @@
 % "positionEstimator" to decode the trajectory. 
 
 % For N runs:
-%   seeds               (1xN): Seeds for each run. Set to 0 to generate random seeds
-%   data_splits         (1xN): Ratio of training:testing data.
+%   seeds       (1xN): Seeds for each run. Set to 0 to generate random seeds
+%   data_splits (1xN): Ratio of training:testing data.
 function [RMSE, runtime] = decoder(training_data, model, show, seeds, data_splits)
 
     modelpath = genpath("src/models/" + model);
@@ -30,7 +30,7 @@ function [RMSE, runtime] = decoder(training_data, model, show, seeds, data_split
         trainingData = training_data(ix(1:s),:);
         testData = training_data(ix((s+1):end),:);
 
-        fprintf('Testing the continuous position estimator (%i/%i): \n', n, N)
+        fprintf("Testing the continuous position estimator (%i/%i): \n", n, N)
 
         meanSqError = 0;
         n_predictions = 0;  
@@ -41,6 +41,10 @@ function [RMSE, runtime] = decoder(training_data, model, show, seeds, data_split
             axis square
             grid
             
+            title("Actual vs. Predicted Trajectories")
+            xlabel("x-position (cm)")
+            ylabel("y-position (cm)")
+            
             % show normals from center point
             [N, K] = size(training_data);
             [I, T] = size(training_data(1, 1).handPos);
@@ -50,11 +54,16 @@ function [RMSE, runtime] = decoder(training_data, model, show, seeds, data_split
             % Convert struct to 4D matrix
             for k = 1:K
                 for n = 1:N
-                    pos(k, n, :, 1) = trial(n, k).handPos(1, 1);
-                    pos(k, n, :, 2) = trial(n, k).handPos(2, 1);
+                    pos(k, n, :, 1) = training_data(n, k).handPos(1, 1);
+                    pos(k, n, :, 2) = training_data(n, k).handPos(2, 1);
                 end
             end
-            x0_bar = trainingData(:, :);
+            
+            x0_bar = mean(pos(:, :, :, 1), "all");
+            y0_bar = mean(pos(:, :, :, 2), "all");
+            
+            xline(y0_bar, "color", [.5 .5 .5, .5], "linewidth", 1, "linestyle", "--");
+            yline(x0_bar, "color", [.5 .5 .5, .5], "linewidth", 1, "linestyle", "--");
         end
 
         % Train Model
@@ -75,10 +84,10 @@ function [RMSE, runtime] = decoder(training_data, model, show, seeds, data_split
 
                     past_current_trial.startHandPos = testData(tr,direc).handPos(1:2,1); 
 
-                    if nargout('positionEstimator') == 3
+                    if nargout("positionEstimator") == 3
                         [decodedPosX, decodedPosY, newParameters] = positionEstimator(past_current_trial, modelParameters);
                         modelParameters = newParameters;
-                    elseif nargout('positionEstimator') == 2
+                    elseif nargout("positionEstimator") == 2
                         [decodedPosX, decodedPosY] = positionEstimator(past_current_trial, modelParameters);
                     end
 
@@ -99,7 +108,8 @@ function [RMSE, runtime] = decoder(training_data, model, show, seeds, data_split
         end
 
         if show
-            legend('Decoded Position', 'Actual Position')
+            legend(["", "", "Decoded Position", "Actual Position"], ...
+                   "location", "south", "orientation", "horizontal")
         end
 
         RMSE(n) = sqrt(meanSqError/n_predictions);

@@ -17,7 +17,7 @@ load("monkeydata_training.mat")
 
 %% Settings
 
-model       = "svm_28"; % model name (corresponding to folder)
+model       = "svm_4"; % model name (corresponding to folder)
 seeds       = [2013]; % seeds for random permutations
 data_splits = [.8]; % cross validation training/testing ratios: 0.8 -> 80/20
 
