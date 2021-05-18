@@ -40,6 +40,21 @@ function [RMSE, runtime] = decoder(training_data, model, show, seeds, data_split
             hold on
             axis square
             grid
+            
+            % show normals from center point
+            [N, K] = size(training_data);
+            [I, T] = size(training_data(1, 1).handPos);
+            
+            pos = zeros(K, N, I, 2);
+
+            % Convert struct to 4D matrix
+            for k = 1:K
+                for n = 1:N
+                    pos(k, n, :, 1) = trial(n, k).handPos(1, 1);
+                    pos(k, n, :, 2) = trial(n, k).handPos(2, 1);
+                end
+            end
+            x0_bar = trainingData(:, :);
         end
 
         % Train Model
@@ -76,8 +91,9 @@ function [RMSE, runtime] = decoder(training_data, model, show, seeds, data_split
                 n_predictions = n_predictions+length(times);
                 if show
                     hold on
-                    plot(decodedHandPos(1,:),decodedHandPos(2,:), 'r');
-                    plot(testData(tr,direc).handPos(1,times),testData(tr,direc).handPos(2,times),'b')
+                    plot(decodedHandPos(1,:),decodedHandPos(2,:), "color", [0.7, 0.4, 1]);
+                    plot(testData(tr,direc).handPos(1,times),testData(tr,direc).handPos(2,times), ...
+                         "color", [0.25, 0.7, 0.6, 0.75])
                 end
             end
         end

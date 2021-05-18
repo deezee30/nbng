@@ -17,15 +17,15 @@ load("monkeydata_training.mat")
 
 %% Settings
 
-model       = "bayes_avjtraj"; % model name (corresponding to folder)
-seeds       = [0 0 0 0 0]; % seeds for random permutations
-data_splits = [.8 .8 .8 .8 .8]; % cross validation training/testing ratios: 0.8 -> 80/20
+model       = "svm_28"; % model name (corresponding to folder)
+seeds       = [2013]; % seeds for random permutations
+data_splits = [.8]; % cross validation training/testing ratios: 0.8 -> 80/20
 
 %% Decoding
 
 t0 = tic;
 
-[RMSE, runtime] = decoder(trial, model, false, seeds, data_splits);
+[RMSE, runtime] = decoder(trial, model, true, seeds, data_splits);
 
 dt = toc(t0);
 N = length(RMSE);
