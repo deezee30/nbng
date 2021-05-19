@@ -9,7 +9,7 @@ No installation required.
 ## Usage
 
 The source code comes with five decoding models (located in the [models folder](src/models)):
-- `bayes_avjtraj` - Bayes Classification w/ Average Trajectory Prediction ([link](src/models/bayes_avjtraj))
+- `bayes_avjtraj` - Bayesian Classification w/ Average Trajectory Prediction ([link](src/models/bayes_avjtraj))
 - `knn_linreg` - k-Nearest Neighbours Classification w/ Linear Regression ([link](src/models/knn_linreg))
 - `svm_28` - 28 Support Vector Machines ([link](src/models/svm_28))
 - **`svm_4` - 4 Support Vector Machines ([link](src/models/svm_4)) [Chosen Design]**
@@ -20,10 +20,13 @@ To use, configure the following settings in `main.m`. For multiple runs (with or
 ```
 model       = "svm_4"; % model name (corresponding to folder)
 seeds       = [2013];  % seeds for random permutations
-data_splits = [.8];    % cross validation training/testing ratios: 0.8 -> 80/20
+data_splits = [.8];    % splits training/testing datasets by ratio: 0.8 -> 80/20
 ```
 
 Next, run `main.m` or call the `decoder` function directly.
+
+## Plotting
+The code used to generate the plots included in the corresponding report are included in the `plots` folder.
 
 ## Contributing
 Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
