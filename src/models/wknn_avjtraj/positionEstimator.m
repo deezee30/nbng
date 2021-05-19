@@ -1,6 +1,6 @@
-%%% Team Members: Faillace, Elena; Lazzaroli, Chiara; Lawrence, Kai; Zerkalijs, Deniss
-function [x, y, new_params] = positionEstimator(test_data, model_params)
+%%% No Brain No Gain: Elena Faillace, Kai Lawrence, Chiara Lazzaroli, Deniss Zerkalijs
 
+function [x, y, new_params] = positionEstimator(test_data, model_params)
     % - test_data:
     %     test_data(m).trialID
     %         unique trial ID
@@ -84,6 +84,7 @@ function [x, y, new_params] = positionEstimator(test_data, model_params)
         end
     end
     
+    % Finally compute the location based on average trajectory
     if size(xs, 2) == 0
         avg_traj = cell2mat(new_params.avg_traj(new_params.angle));
         if L < size(avg_traj, 2)

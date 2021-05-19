@@ -1,3 +1,5 @@
+%%% No Brain No Gain: Elena Faillace, Kai Lawrence, Chiara Lazzaroli, Deniss Zerkalijs
+
 load('SVM_4_RMSE_LOG.mat')
 
 xvalues = {'1', '20', '42', '50', '75', '100', '250', '327', '500', '750', '1000', '2500', '5000', '6847', '7500', '10000', '21278', '25000', '50000', '75000', '88178', '100000', 'Mean across Seeds'};

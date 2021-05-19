@@ -1,7 +1,7 @@
-%%% Team Members: Faillace, Elena; Lazzaroli, Chiara; Lawrence, Kai; Zerkalijs, Deniss
+%%% No Brain No Gain: Elena Faillace, Kai Lawrence, Chiara Lazzaroli, Deniss Zerkalijs
+
 function [model_params] = positionEstimatorTraining(training_data)
     % Arguments:
-    %
     % - training_data:
     %     training_data(n,k)              (n = trial id,  k = reaching angle)
     %     training_data(n,k).trialId      unique number of the trial
@@ -11,7 +11,6 @@ function [model_params] = positionEstimatorTraining(training_data)
     % ... train your model
     %
     % Return Value:
-    %
     % - model_params:
     %     single structure containing all the learned parameters of your
     %     model and which can be used by the "positionEstimator" function.

@@ -1,3 +1,5 @@
+%%% No Brain No Gain: Elena Faillace, Kai Lawrence, Chiara Lazzaroli, Deniss Zerkalijs
+
 function sim = linearKernel(x1, x2)
     %LINEARKERNEL returns a linear kernel between x1 and x2
     %   sim = linearKernel(x1, x2) returns a linear kernel between x1 and x2
@@ -8,5 +10,4 @@ function sim = linearKernel(x1, x2)
 
     % Compute the kernel
     sim = x1' * x2;  % dot product
-
 end

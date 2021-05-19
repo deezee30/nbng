@@ -1,4 +1,20 @@
-function [modelParameters] = positionEstimatorTraining2(training_data)
+%%% No Brain No Gain: Elena Faillace, Kai Lawrence, Chiara Lazzaroli, Deniss Zerkalijs
+
+function [modelParameters] = positionEstimatorTraining(training_data)
+    % Arguments:
+    % - training_data:
+    %     training_data(n,k)              (n = trial id,  k = reaching angle)
+    %     training_data(n,k).trialId      unique number of the trial
+    %     training_data(n,k).spikes(i,t)  (i = neuron id, t = time)
+    %     training_data(n,k).handPos(d,t) (d = dimension [1-3], t = time)
+    %
+    % ... train your model
+    %
+    % Return Value:
+    % - model_params:
+    %     single structure containing all the learned parameters of your
+    %     model and which can be used by the "positionEstimator" function.
+    
     [n_trials, n_angles] = size(training_data);
     [n_neurons, time_length] = size(training_data(1,1).spikes);
     time_window = 300; % do not use the entire length of spike train - just the planning part (first 300 ms)

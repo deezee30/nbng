@@ -1,3 +1,5 @@
+%%% No Brain No Gain: Elena Faillace, Kai Lawrence, Chiara Lazzaroli, Deniss Zerkalijs
+
 % Clean up
 clc; close all; clear;
 
@@ -26,6 +28,7 @@ max_rate = max(spike_event_avg, [], "all");
 fire_rate = spike_event_avg' / max_rate; % normalise
 
 
+% For plotting the entire tuning matrix. uncomment
 % figure
 % FR = imagesc(fire_rate');
 % ax = gca;

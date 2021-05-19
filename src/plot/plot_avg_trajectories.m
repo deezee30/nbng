@@ -1,3 +1,5 @@
+%%% No Brain No Gain: Elena Faillace, Kai Lawrence, Chiara Lazzaroli, Deniss Zerkalijs
+
 function plot_avg_trajectories(avg_trjs)
 
     n_trjs = length(avg_trjs);

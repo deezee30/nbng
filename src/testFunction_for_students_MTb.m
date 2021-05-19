@@ -1,4 +1,6 @@
-% Test Script to give to the students, March 2015
+%%% No Brain No Gain: Elena Faillace, Kai Lawrence, Chiara Lazzaroli, Deniss Zerkalijs
+
+% Test Script to give to the students, March 2015.
 %% Continuous Position Estimator Test Script
 % This function first calls the function "positionEstimatorTraining" to get
 % the relevant modelParameters, and then calls the function

@@ -1,3 +1,5 @@
+%%% No Brain No Gain: Elena Faillace, Kai Lawrence, Chiara Lazzaroli, Deniss Zerkalijs
+
 %% Setup
 
 % Clean up
@@ -18,8 +20,8 @@ load("monkeydata_training.mat")
 %% Settings
 
 model       = "svm_4"; % model name (corresponding to folder)
-seeds       = [2013]; % seeds for random permutations
-data_splits = [.8]; % cross validation training/testing ratios: 0.8 -> 80/20
+seeds       = [2013];  % seeds for random permutations
+data_splits = [.8];    % cross validation training/testing ratios: 0.8 -> 80/20
 
 %% Decoding
 

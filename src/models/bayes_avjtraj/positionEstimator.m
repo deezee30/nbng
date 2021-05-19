@@ -1,3 +1,5 @@
+%%% No Brain No Gain: Elena Faillace, Kai Lawrence, Chiara Lazzaroli, Deniss Zerkalijs
+
 function [x, y] = positionEstimator(test_data, model_params)
     % - test_data:
     %     test_data(m).trialID
@@ -24,7 +26,7 @@ function [x, y] = positionEstimator(test_data, model_params)
     %             test_data.decodedHandPos = [2.3; 1.5]
     %             test_data.spikes = 98x340 matrix of spiking activity
 
-    [n_neurons, time_lenght] = size(test_data.spikes);
+    [n_neurons, time_length] = size(test_data.spikes);
     time_window = 300;
 
     % transform the dataset to spikes count normalized
@@ -53,9 +55,9 @@ function [x, y] = positionEstimator(test_data, model_params)
 
     % find trajectory on average trajectory after given time step (length of spikes) 
     avg_traj = cell2mat(model_params.trajectories(max_prob_class));
-    if time_lenght < size(avg_traj,2)
-        x = avg_traj(1, time_lenght);
-        y = avg_traj(2, time_lenght);
+    if time_length < size(avg_traj,2)
+        x = avg_traj(1, time_length);
+        y = avg_traj(2, time_length);
     else
         x = avg_traj(1, end);
         y = avg_traj(2, end);

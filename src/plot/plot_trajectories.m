@@ -1,3 +1,5 @@
+%%% No Brain No Gain: Elena Faillace, Kai Lawrence, Chiara Lazzaroli, Deniss Zerkalijs
+
 function plot_trajectories(training_data)
     
     n_trials = size(training_data, 1); % Number of recorded trials
